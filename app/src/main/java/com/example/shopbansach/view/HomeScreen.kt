@@ -9,14 +9,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +57,7 @@ fun HomeScreen(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            item { HomeHeader() }
+            item { HomeHeader(navController) }
             item { StorySlideSection(uiState.featuredBooks, navController) }
             item { NewArrivalsHeader() }
             items(uiState.newArrivals) { book ->
@@ -71,7 +68,7 @@ fun HomeScreen(
 }
 
 @Composable
-fun HomeHeader() {
+fun HomeHeader(navController: NavController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -105,10 +102,17 @@ fun HomeHeader() {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(AuthColors.Accent.copy(alpha = 0.2f)),
+                    .background(Color(0xFFE4E2DD))
+                    .clickable {
+                        navController.navigate(Screen.Profile.route)
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = AuthColors.Primary)
+                Icon(
+                    Icons.Default.Person, 
+                    contentDescription = null, 
+                    tint = AuthColors.Primary
+                )
             }
         }
     }

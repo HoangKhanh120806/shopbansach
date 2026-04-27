@@ -35,21 +35,16 @@ fun RegisterScreen(
     val context = LocalContext.current
     val authState by viewModel.authState.collectAsState()
 
-    // Theo dõi trạng thái đăng ký
     LaunchedEffect(authState) {
-        when (authState) {
-            is AuthState.Success -> {
-                Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
-                viewModel.resetState()
-                navController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Register.route) { inclusive = true }
-                }
+        if (authState is AuthState.Success) {
+            Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
+            navController.navigate(Screen.Login.route) {
+                popUpTo(Screen.Register.route) { inclusive = true }
             }
-            is AuthState.Error -> {
-                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_LONG).show()
-                viewModel.resetState()
-            }
-            else -> {}
+            viewModel.resetState()
+        } else if (authState is AuthState.Error) {
+            Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_LONG).show()
+            viewModel.resetState()
         }
     }
 
@@ -82,13 +77,6 @@ fun RegisterScreen(
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        Text(
-            text = "Bắt đầu hành trình đọc sách của bạn cùng chúng tôi",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-            modifier = Modifier.padding(top = 4.dp)
-        )
-
         Spacer(modifier = Modifier.height(32.dp))
 
         AuthTextField(
@@ -110,13 +98,16 @@ fun RegisterScreen(
         AuthTextField(
             value = password,
             hint = "Mật khẩu",
+            isPassword = true, // Ẩn mật khẩu
             onValueChange = { password = it }
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         if (authState is AuthState.Loading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
         } else {
             AuthButton(
                 text = "Đăng ký",

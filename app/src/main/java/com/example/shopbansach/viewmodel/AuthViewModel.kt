@@ -3,6 +3,9 @@ package com.example.shopbansach.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.repository.AuthRepository
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -32,7 +35,31 @@ class AuthViewModel : ViewModel() {
             if (result.isSuccess) {
                 _authState.value = AuthState.Success
             } else {
-                _authState.value = AuthState.Error(result.exceptionOrNull()?.message ?: "Đăng ký thất bại")
+                val exception = result.exceptionOrNull()
+                val errorMessage = when (exception) {
+                    is FirebaseAuthWeakPasswordException -> "Mật khẩu quá yếu. Vui lòng sử dụng ít nhất 6 ký tự."
+                    is FirebaseAuthInvalidCredentialsException -> "Địa chỉ email không hợp lệ."
+                    is FirebaseAuthUserCollisionException -> "Email này đã được đăng ký bởi một tài khoản khác."
+                    else -> "Lỗi: ${exception?.localizedMessage ?: "Đăng ký thất bại"}"
+                }
+                _authState.value = AuthState.Error(errorMessage)
+            }
+        }
+    }
+
+    fun login(email: String, password: String) {
+        if (email.isEmpty() || password.isEmpty()) {
+            _authState.value = AuthState.Error("Vui lòng nhập Email và Mật khẩu")
+            return
+        }
+
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = repository.loginUser(email, password)
+            if (result.isSuccess) {
+                _authState.value = AuthState.Success
+            } else {
+                _authState.value = AuthState.Error("Email hoặc mật khẩu không chính xác")
             }
         }
     }

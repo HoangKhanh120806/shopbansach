@@ -11,11 +11,9 @@ class AuthRepository {
 
     suspend fun registerUser(name: String, email: String, password: String): Result<Unit> {
         return try {
-            // 1. Tạo tài khoản trong Firebase Auth
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
             val userId = authResult.user?.uid ?: throw Exception("User creation failed")
 
-            // 2. Thêm thông tin người dùng vào Firestore
             val user = User(
                 id = userId,
                 name = name,
@@ -27,6 +25,33 @@ class AuthRepository {
                 .document(userId)
                 .set(user)
                 .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun loginUser(email: String, password: String): Result<Unit> {
+        return try {
+            auth.signInWithEmailAndPassword(email, password).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun logout() {
+        auth.signOut()
+    }
+
+    suspend fun deleteAccount(): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: throw Exception("No user logged in")
+            val userId = user.uid
+
+            firestore.collection("users").document(userId).delete().await()
+            user.delete().await()
 
             Result.success(Unit)
         } catch (e: Exception) {

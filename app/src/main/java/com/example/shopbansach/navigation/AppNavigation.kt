@@ -19,7 +19,7 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = Screen.Home.route,
         modifier = modifier
     ) {
         composable(route = Screen.Home.route) {
@@ -48,6 +48,10 @@ fun AppNavigation(
                 isDarkTheme = isDarkTheme,
                 onThemeChange = onThemeChange
             )
+        }
+
+        composable(route = Screen.Settings.route) {
+            SettingsScreen(navController = navController)
         }
 
         composable(

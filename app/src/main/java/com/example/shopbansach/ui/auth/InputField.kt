@@ -1,43 +1,79 @@
 package com.example.shopbansach.ui.auth
 
-
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun AuthTextField(
     value: String,
     hint: String,
+    isPassword: Boolean = false,
     onValueChange: (String) -> Unit
 ) {
-    Column {
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            textStyle = TextStyle(color = AuthColors.Text),
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(AuthColors.Surface)
-                .padding(16.dp)
-        ) { inner ->
-            if (value.isEmpty()) {
-                Text(text = hint, color = AuthColors.Hint)
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        // Label sẽ tự động nhảy lên đường viền khi có dữ liệu hoặc được focus
+        label = { 
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodyMedium
+            ) 
+        },
+        placeholder = { 
+            Text(
+                text = "Nhập $hint...", 
+                color = AuthColors.Hint.copy(alpha = 0.5f)
+            ) 
+        },
+        modifier = Modifier.fillMaxWidth(),
+        textStyle = TextStyle(color = AuthColors.Text),
+        
+        // Logic ẩn/hiện mật khẩu
+        visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+        
+        trailingIcon = {
+            if (isPassword) {
+                val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(imageVector = image, contentDescription = null, tint = AuthColors.Hint)
+                }
             }
-            inner()
-        }
-    }
+        },
+        
+        keyboardOptions = KeyboardOptions(
+            imeAction = ImeAction.Next,
+            autoCorrectEnabled = false
+        ),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = AuthColors.Primary,
+            unfocusedBorderColor = AuthColors.Hint.copy(alpha = 0.3f),
+            focusedLabelColor = AuthColors.Primary,
+            unfocusedLabelColor = AuthColors.Hint,
+            // Đảm bảo nền trong suốt để thấy rõ đường viền và nhãn nổi
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            cursorColor = AuthColors.Primary
+        ),
+        singleLine = true
+    )
 }
 
 @Composable
