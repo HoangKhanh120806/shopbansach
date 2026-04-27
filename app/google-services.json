@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "446865624691",
+    "project_id": "shopbansach-2ef4d",
+    "storage_bucket": "shopbansach-2ef4d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:446865624691:android:006c7ecc74f9251e58a406",
+        "android_client_info": {
+          "package_name": "com.example.shopbansach"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmUxyAN77ViPVaV18IGTjkZaGcqR2FqkA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
