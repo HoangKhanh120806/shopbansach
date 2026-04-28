@@ -307,7 +307,7 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                 }
             }
             Text(
-                text = book.price,
+                text = "${book.price}đ",
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.tertiary,
                 fontSize = 15.sp

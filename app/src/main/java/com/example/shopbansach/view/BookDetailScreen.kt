@@ -1,5 +1,6 @@
 package com.example.shopbansach.view
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,16 +29,20 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.BookDetailViewModel
+import com.example.shopbansach.viewmodel.CartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookDetailScreen(
     navController: NavController, 
     bookId: String,
-    viewModel: BookDetailViewModel = viewModel()
+    viewModel: BookDetailViewModel = viewModel(),
+    cartViewModel: CartViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(bookId) {
         viewModel.getBookDetail(bookId)
@@ -67,7 +73,7 @@ fun BookDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Button(
-                        onClick = { /* TODO */ },
+                        onClick = { /* TODO: Implement preview logic */ },
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp),
@@ -79,7 +85,13 @@ fun BookDetailScreen(
                         Text("Đọc thử", color = Color.White, fontSize = 16.sp)
                     }
                     Button(
-                        onClick = { /* TODO */ },
+                        onClick = { 
+                            uiState.book?.let { book ->
+                                cartViewModel.addToCart(book)
+                                Toast.makeText(context, "Đã thêm vào giỏ hàng", Toast.LENGTH_SHORT).show()
+                                navController.navigate(Screen.Cart.route)
+                            }
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp),
@@ -211,7 +223,7 @@ fun BookDetailScreen(
                         )
 
                         Text(
-                            text = book.price, 
+                            text = "${book.price}đ",
                             fontWeight = FontWeight.Bold, 
                             fontSize = 20.sp,
                             color = MaterialTheme.colorScheme.primary

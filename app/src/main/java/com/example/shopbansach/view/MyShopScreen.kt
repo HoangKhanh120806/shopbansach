@@ -204,7 +204,7 @@ fun MyProductItem(book: Book, onEdit: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = book.price,
+                    text = "${book.price}đ",
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 14.sp

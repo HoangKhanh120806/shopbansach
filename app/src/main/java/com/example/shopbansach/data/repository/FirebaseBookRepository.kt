@@ -4,15 +4,16 @@ import com.example.shopbansach.data.model.Book
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
+import java.util.Locale
 
 class FirebaseBookRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val booksCollection = firestore.collection("books")
 
-    // Lấy tất cả sách
-    suspend fun getAllBooks(): List<Book> {
+    // Lấy tất cả sách (có giới hạn để tránh tốn băng thông)
+    suspend fun getAllBooks(limit: Long = 50): List<Book> {
         return try {
-            val snapshot = booksCollection.get().await()
+            val snapshot = booksCollection.limit(limit).get().await()
             snapshot.toObjects(Book::class.java)
         } catch (e: Exception) {
             emptyList()
@@ -22,19 +23,23 @@ class FirebaseBookRepository {
     // Lấy sách nổi bật (Featured)
     suspend fun getFeaturedBooks(): List<Book> {
         return try {
-            // Lấy 5 cuốn sách bất kỳ làm nổi bật nếu không có field isFeatured
-            val snapshot = booksCollection.limit(5).get().await()
+            // Ưu tiên lấy theo rating cao
+            val snapshot = booksCollection
+                .orderBy("rating", Query.Direction.DESCENDING)
+                .limit(10)
+                .get().await()
             snapshot.toObjects(Book::class.java)
         } catch (e: Exception) {
-            emptyList()
+            // Fallback nếu chưa tạo index cho rating
+            val snapshot = booksCollection.limit(10).get().await()
+            snapshot.toObjects(Book::class.java)
         }
     }
 
     // Lấy sách mới cập nhật
     suspend fun getNewArrivals(): List<Book> {
         return try {
-            // Sắp xếp theo ID hoặc một field timestamp nếu có
-            val snapshot = booksCollection.limit(10).get().await()
+            val snapshot = booksCollection.limit(20).get().await()
             snapshot.toObjects(Book::class.java)
         } catch (e: Exception) {
             emptyList()
@@ -52,15 +57,42 @@ class FirebaseBookRepository {
         }
     }
 
-    // Tìm kiếm sách
-    suspend fun searchBooks(query: String): List<Book> {
-        if (query.isEmpty()) return emptyList()
+    /**
+     * Tối ưu tìm kiếm: 
+     * Sử dụng prefix query trên field titleLowercase để hỗ trợ tìm kiếm không phân biệt hoa thường.
+     */
+    suspend fun searchBooks(queryText: String): List<Book> {
+        if (queryText.isEmpty()) return emptyList()
+        val queryLower = queryText.lowercase(Locale.ROOT)
+        
         return try {
-            val snapshot = booksCollection.get().await()
+            // Tìm kiếm theo tiền tố của titleLowercase
+            val snapshot = booksCollection
+                .whereGreaterThanOrEqualTo("titleLowercase", queryLower)
+                .whereLessThanOrEqualTo("titleLowercase", queryLower + "\uf8ff")
+                .limit(20)
+                .get().await()
+            
+            val results = snapshot.toObjects(Book::class.java)
+            
+            // Nếu không có kết quả, dùng fallback để tìm kiếm chứa chuỗi (contains) trên dữ liệu nhỏ
+            if (results.isEmpty()) {
+                manualSearchFallback(queryText)
+            } else {
+                results
+            }
+        } catch (e: Exception) {
+            manualSearchFallback(queryText)
+        }
+    }
+    
+    private suspend fun manualSearchFallback(queryText: String): List<Book> {
+        return try {
+            val snapshot = booksCollection.limit(100).get().await()
             val allBooks = snapshot.toObjects(Book::class.java)
             allBooks.filter { 
-                it.title.contains(query, ignoreCase = true) || 
-                it.author.contains(query, ignoreCase = true) 
+                it.title.contains(queryText, ignoreCase = true) || 
+                it.author.contains(queryText, ignoreCase = true) 
             }
         } catch (e: Exception) {
             emptyList()

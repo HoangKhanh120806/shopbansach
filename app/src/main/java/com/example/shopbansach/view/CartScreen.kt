@@ -10,9 +10,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,19 +28,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.CartItem
 import com.example.shopbansach.navigation.Screen
-import com.example.shopbansach.viewmodel.HomeViewModel
+import com.example.shopbansach.viewmodel.CartViewModel
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel() // Tạm dùng HomeViewModel hoặc tạo CartViewModel riêng
+    viewModel: CartViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val cartItems = uiState.newArrivals.take(2) // Tạm thời lấy dữ liệu thật từ newArrivals
 
     Scaffold(
         topBar = {
@@ -64,18 +63,20 @@ fun CartScreen(
         },
         bottomBar = {
             Column {
-                Button(
-                    onClick = { navController.navigate(Screen.Checkout.route) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Tiến hành thanh toán", fontSize = 18.sp, color = Color.White)
+                if (uiState.cartItems.isNotEmpty()) {
+                    Button(
+                        onClick = { navController.navigate(Screen.Checkout.route) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 8.dp)
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Tiến hành thanh toán", fontSize = 18.sp, color = Color.White)
+                    }
                 }
                 
                 BottomBar(
@@ -90,25 +91,51 @@ fun CartScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(24.dp)
-            ) {
-                items(cartItems) { item ->
-                    CartItemRow(item)
-                    Spacer(modifier = Modifier.height(24.dp))
+        when {
+            uiState.isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
+            }
+            uiState.cartItems.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.ShoppingCart, 
+                            contentDescription = null, 
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Giỏ hàng của bạn đang trống", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = { navController.navigate(Screen.Home.route) }) {
+                            Text("Mua sắm ngay")
+                        }
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(24.dp)
+                ) {
+                    items(uiState.cartItems) { item ->
+                        CartItemRow(
+                            item = item,
+                            onIncrease = { viewModel.updateQuantity(item.bookId, item.quantity + 1) },
+                            onDecrease = { viewModel.updateQuantity(item.bookId, item.quantity - 1) },
+                            onRemove = { viewModel.removeFromCart(item.bookId) }
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
 
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SummarySection(subtotal = 520000.0, shipping = 30000.0)
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val subtotal = uiState.cartItems.sumOf { it.price * it.quantity }.toDouble()
+                        SummarySection(subtotal = subtotal, shipping = 30000.0)
+                    }
                 }
             }
         }
@@ -116,7 +143,12 @@ fun CartScreen(
 }
 
 @Composable
-fun CartItemRow(item: Book) {
+fun CartItemRow(
+    item: CartItem,
+    onIncrease: () -> Unit,
+    onDecrease: () -> Unit,
+    onRemove: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -162,14 +194,14 @@ fun CartItemRow(item: Book) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = item.price,
+                    text = "${item.price * item.quantity}đ",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = onDecrease, modifier = Modifier.size(32.dp)) {
                         Icon(
                             Icons.Default.Remove, 
                             contentDescription = null, 
@@ -177,11 +209,11 @@ fun CartItemRow(item: Book) {
                         )
                     }
                     Text(
-                        "1", 
+                        "${item.quantity}", 
                         modifier = Modifier.padding(horizontal = 8.dp),
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = onIncrease, modifier = Modifier.size(32.dp)) {
                         Icon(
                             Icons.Default.Add, 
                             contentDescription = null, 
@@ -190,7 +222,7 @@ fun CartItemRow(item: Book) {
                     }
                 }
                 
-                IconButton(onClick = { /* TODO */ }) {
+                IconButton(onClick = onRemove) {
                     Icon(
                         Icons.Default.DeleteOutline, 
                         contentDescription = null, 
@@ -213,7 +245,7 @@ fun SummarySection(subtotal: Double, shipping: Double) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Tạm tính", color = MaterialTheme.colorScheme.onSurface)
                 Text(
-                    String.format(Locale.US, "₫%.0f", subtotal), 
+                    String.format(Locale.US, "₫%,.0f", subtotal), 
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -222,7 +254,7 @@ fun SummarySection(subtotal: Double, shipping: Double) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Phí vận chuyển", color = MaterialTheme.colorScheme.onSurface)
                 Text(
-                    String.format(Locale.US, "₫%.0f", shipping), 
+                    String.format(Locale.US, "₫%,.0f", shipping), 
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -236,7 +268,7 @@ fun SummarySection(subtotal: Double, shipping: Double) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    String.format(Locale.US, "₫%.0f", subtotal + shipping), 
+                    String.format(Locale.US, "₫%,.0f", subtotal + shipping),
                     fontWeight = FontWeight.ExtraBold, 
                     fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.primary

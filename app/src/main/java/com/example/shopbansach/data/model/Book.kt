@@ -3,8 +3,9 @@ package com.example.shopbansach.data.model
 data class Book(
     val id: String = "",
     val title: String = "",
+    val titleLowercase: String = "", // Dùng cho việc tìm kiếm không phân biệt hoa thường
     val author: String = "",
-    val price: String = "",
+    val price: Long = 0,
     val rating: Double = 0.0,
     val pages: Int = 0,
     val synopsis: String = "",
