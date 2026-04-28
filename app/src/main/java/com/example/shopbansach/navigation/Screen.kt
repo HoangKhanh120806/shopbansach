@@ -17,7 +17,7 @@ sealed class Screen(val route : String){
     object Profile : Screen("profile")
 
     object BookDetail : Screen("book_detail/{bookId}") {
-        fun createRoute(bookId: Int) = "book_detail/$bookId"
+        fun createRoute(bookId: String) = "book_detail/$bookId"
     }
 
     object Checkout : Screen("checkout")
@@ -27,4 +27,8 @@ sealed class Screen(val route : String){
     object Settings : Screen("settings")
 
     object EditProfile : Screen("edit_profile")
+    
+    object MyShop : Screen("my_shop")
+
+    object AddBook : Screen("add_book")
 }

@@ -140,7 +140,7 @@ fun ProfileScreen(
                                     icon = Icons.Default.AddBusiness,
                                     title = "Bán sách",
                                     titleColor = MaterialTheme.colorScheme.tertiary,
-                                    onClick = { /* TODO: Điều hướng trang bán hàng */ }
+                                    onClick = { navController.navigate(Screen.MyShop.route) }
                                 )
                                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
                             }
