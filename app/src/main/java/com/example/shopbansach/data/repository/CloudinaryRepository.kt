@@ -23,11 +23,10 @@ class CloudinaryRepository(private val context: Context) {
     }
 
     /**
-     * Upload ảnh lên Cloudinary bằng chế độ Unsigned (không cần api_secret)
-     * @param uri Uri của ảnh từ thư viện
-     * @param uploadPreset Tên preset bạn tạo trên Cloudinary (phải để ở chế độ Unsigned)
+     * Upload ảnh lên Cloudinary bằng chế độ Unsigned
+     * @return Result chứa Pair(secure_url, public_id)
      */
-    suspend fun uploadImage(uri: Uri, uploadPreset: String = "accound"): Result<String> = suspendCancellableCoroutine { continuation ->
+    suspend fun uploadImage(uri: Uri, uploadPreset: String = "accound"): Result<Pair<String, String>> = suspendCancellableCoroutine { continuation ->
         MediaManager.get().upload(uri)
             .unsigned(uploadPreset)
             .callback(object : UploadCallback {
@@ -36,8 +35,9 @@ class CloudinaryRepository(private val context: Context) {
                 
                 override fun onSuccess(requestId: String?, resultData: Map<*, *>) {
                     val url = resultData["secure_url"] as? String ?: ""
+                    val publicId = resultData["public_id"] as? String ?: ""
                     if (continuation.isActive) {
-                        continuation.resume(Result.success(url))
+                        continuation.resume(Result.success(Pair(url, publicId)))
                     }
                 }
 
@@ -49,5 +49,16 @@ class CloudinaryRepository(private val context: Context) {
 
                 override fun onReschedule(requestId: String?, error: ErrorInfo?) {}
             }).dispatch()
+    }
+
+    /**
+     * LƯU Ý: Việc xóa ảnh trực tiếp từ Android yêu cầu API Secret và Signature (Signed request).
+     * Để bảo mật, API Secret KHÔNG nên để trong code App.
+     * Thông thường, việc dọn dẹp ảnh cũ sẽ được thực hiện qua một Cloud Function hoặc Backend.
+     */
+    suspend fun deleteImage(publicId: String): Result<Unit> {
+        // Đây là nơi bạn sẽ gọi API xóa nếu có Backend hỗ trợ
+        // Hiện tại chúng ta sẽ để placeholder vì lý do bảo mật đã nêu trên
+        return Result.success(Unit)
     }
 }

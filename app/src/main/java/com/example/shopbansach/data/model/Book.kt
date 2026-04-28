@@ -10,6 +10,7 @@ data class Book(
     val pages: Int = 0,
     val synopsis: String = "",
     val imageUrl: String? = null,
+    val imagePublicId: String? = null, // Thêm trường này để quản lý ảnh trên Cloudinary
     val ownerId: String = "",
     val category: String = "Khác",
     val stock: Int = 0

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,14 +29,20 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.model.UserRole
+import com.example.shopbansach.data.repository.CloudinaryRepository
 import com.example.shopbansach.viewmodel.AdminUserViewModel
+import com.example.shopbansach.viewmodel.factory.AdminUserViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminUserManageScreen(
-    navController: NavController,
-    viewModel: AdminUserViewModel = viewModel()
+    navController: NavController
 ) {
+    val context = LocalContext.current
+    // Sử dụng Factory để truyền CloudinaryRepository vào ViewModel
+    val viewModel: AdminUserViewModel = viewModel(
+        factory = AdminUserViewModelFactory(CloudinaryRepository(context))
+    )
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -195,7 +202,6 @@ fun UserAdminItem(
             text = { Text("Chọn vai trò mới cho người dùng ${user.name}") },
             confirmButton = {
                 Column {
-                    // Chỉ hiển thị USER và SELLER, không cho phép chọn ADMIN
                     listOf(UserRole.USER, UserRole.SELLER).forEach { role ->
                         TextButton(
                             onClick = {

@@ -42,9 +42,9 @@ class BookViewModel(
         stock: String,
         imageUri: Uri?,
         existingImageUrl: String? = null,
+        existingPublicId: String? = null,
         rating: Double = 0.0
     ) {
-        // Làm sạch dữ liệu số (loại bỏ dấu chấm, phẩy, khoảng trắng)
         val cleanPrice = price.replace(Regex("[^0-9]"), "")
         val cleanPages = pages.replace(Regex("[^0-9]"), "")
         val cleanStock = stock.replace(Regex("[^0-9]"), "")
@@ -58,11 +58,20 @@ class BookViewModel(
             _actionState.value = BookActionState.Loading
             try {
                 var finalImageUrl = existingImageUrl
+                var finalPublicId = existingPublicId
 
                 if (imageUri != null) {
                     val uploadResult = cloudinaryRepository.uploadImage(imageUri)
                     if (uploadResult.isSuccess) {
-                        finalImageUrl = uploadResult.getOrNull()
+                        val (url, publicId) = uploadResult.getOrThrow()
+                        
+                        // Nếu đang sửa sách và có ảnh cũ, có thể xóa ảnh cũ trên Cloudinary ở đây
+                        if (!existingPublicId.isNullOrEmpty()) {
+                            cloudinaryRepository.deleteImage(existingPublicId)
+                        }
+                        
+                        finalImageUrl = url
+                        finalPublicId = publicId
                     } else {
                         _actionState.value = BookActionState.Error("Lỗi upload ảnh")
                         return@launch
@@ -79,6 +88,7 @@ class BookViewModel(
                     pages = cleanPages.toIntOrNull() ?: 0,
                     synopsis = synopsis,
                     imageUrl = finalImageUrl,
+                    imagePublicId = finalPublicId,
                     ownerId = auth.currentUser?.uid ?: "",
                     category = category.ifEmpty { "Khác" },
                     stock = cleanStock.toIntOrNull() ?: 0,
