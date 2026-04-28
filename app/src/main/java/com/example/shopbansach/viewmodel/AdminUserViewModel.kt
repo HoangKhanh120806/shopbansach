@@ -16,7 +16,8 @@ data class AdminUserUiState(
     val filteredUsers: List<User> = emptyList(),
     val isLoading: Boolean = false,
     val searchQuery: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val actionSuccessMessage: String? = null // Thêm thông báo thành công
 )
 
 class AdminUserViewModel(private val repository: AuthRepository = AuthRepository()) : ViewModel() {
@@ -39,7 +40,7 @@ class AdminUserViewModel(private val repository: AuthRepository = AuthRepository
                     isLoading = false
                 ) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Không thể tải danh sách: ${e.message}") }
             }
         }
     }
@@ -63,27 +64,31 @@ class AdminUserViewModel(private val repository: AuthRepository = AuthRepository
 
     fun changeUserRole(userId: String, newRole: UserRole) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             val result = repository.updateUserRole(userId, newRole)
             if (result.isSuccess) {
+                _uiState.update { it.copy(actionSuccessMessage = "Đã cập nhật quyền thành ${newRole.name}") }
                 loadUsers() 
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Lỗi đổi quyền: ${result.exceptionOrNull()?.message}") }
             }
         }
     }
 
-    /**
-     * Admin xóa người dùng (Lưu ý: Chỉ xóa được data trong Firestore, 
-     * việc xóa Auth User cần Cloud Functions hoặc Admin SDK, 
-     * nhưng ở mức độ App này chúng ta sẽ xóa data trước)
-     */
     fun deleteUser(userId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val result = repository.deleteUserByAdmin(userId)
             if (result.isSuccess) {
+                _uiState.update { it.copy(actionSuccessMessage = "Đã xóa người dùng thành công") }
                 loadUsers()
             } else {
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Không thể xóa người dùng") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Lỗi khi xóa: ${result.exceptionOrNull()?.message}") }
             }
         }
+    }
+    
+    fun clearMessages() {
+        _uiState.update { it.copy(errorMessage = null, actionSuccessMessage = null) }
     }
 }

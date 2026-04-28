@@ -1,8 +1,8 @@
 package com.example.shopbansach.data.repository
 
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.UserRole
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
@@ -93,8 +93,7 @@ class FirebaseBookRepository {
     }
 
     /**
-     * Lưu sách an toàn: Kiểm tra quyền sở hữu nếu là cập nhật
-     * Sử dụng update để tránh mất dữ liệu rating/soldCount
+     * Lưu sách an toàn: Kiểm tra quyền sở hữu (Hoặc là Admin)
      */
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
@@ -104,11 +103,15 @@ class FirebaseBookRepository {
 
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
-                if (ownerId != currentUserId) {
+                
+                // Kiểm tra xem có phải chủ sở hữu hoặc Admin không
+                val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
+                val role = currentUserDoc.getString("role")
+                
+                if (ownerId != currentUserId && role != "ADMIN") {
                     throw Exception("Bạn không có quyền chỉnh sửa sách này")
                 }
                 
-                // Cập nhật từng trường để tránh ghi đè các trường khác (như rating)
                 val updates = mapOf(
                     "title" to book.title,
                     "titleLowercase" to book.title.lowercase(Locale.ROOT),
@@ -123,7 +126,6 @@ class FirebaseBookRepository {
                 
                 docRef.update(updates).await()
             } else {
-                // Nếu sách mới, dùng set
                 docRef.set(book).await()
             }
             Result.success(Unit)
@@ -150,7 +152,7 @@ class FirebaseBookRepository {
     }
 
     /**
-     * Xóa sách an toàn: Kiểm tra quyền sở hữu
+     * Xóa sách an toàn: Kiểm tra quyền sở hữu hoặc quyền Admin
      */
     suspend fun deleteBook(bookId: String): Result<Unit> {
         return try {
@@ -160,7 +162,12 @@ class FirebaseBookRepository {
 
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
-                if (ownerId != currentUserId) {
+                
+                // Kiểm tra Role của Admin
+                val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
+                val role = currentUserDoc.getString("role")
+
+                if (ownerId != currentUserId && role != "ADMIN") {
                     throw Exception("Bạn không có quyền xóa sách này")
                 }
                 docRef.delete().await()

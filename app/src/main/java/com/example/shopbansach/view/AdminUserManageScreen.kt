@@ -1,5 +1,6 @@
 package com.example.shopbansach.view
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +40,19 @@ fun AdminUserManageScreen(
     viewModel: AdminUserViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Hiển thị Toast khi có thông báo từ ViewModel
+    LaunchedEffect(uiState.errorMessage, uiState.actionSuccessMessage) {
+        uiState.errorMessage?.let {
+            Toast.makeText(context, "Lỗi: $it", Toast.LENGTH_LONG).show()
+            viewModel.clearMessages()
+        }
+        uiState.actionSuccessMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -62,55 +77,30 @@ fun AdminUserManageScreen(
                 placeholder = { Text("Tìm theo tên hoặc email...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                )
+                singleLine = true
             )
 
             Box(modifier = Modifier.weight(1f)) {
-                when {
-                    uiState.isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    }
-                    uiState.errorMessage != null -> {
-                        Column(
-                            modifier = Modifier.fillMaxSize().padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = "Lỗi: ${uiState.errorMessage}",
-                                color = MaterialTheme.colorScheme.error,
-                                textAlign = TextAlign.Center
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else if (uiState.filteredUsers.isEmpty()) {
+                    Text(
+                        text = if (uiState.searchQuery.isEmpty()) "Danh sách người dùng trống" else "Không tìm thấy người dùng phù hợp",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(uiState.filteredUsers) { user ->
+                            UserAdminItem(
+                                user = user,
+                                onChangeRole = { newRole -> viewModel.changeUserRole(user.id, newRole) },
+                                onDelete = { viewModel.deleteUser(user.id) }
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadUsers() }) {
-                                Text("Thử lại")
-                            }
-                        }
-                    }
-                    uiState.filteredUsers.isEmpty() -> {
-                        Text(
-                            text = if (uiState.searchQuery.isEmpty()) "Danh sách người dùng trống" else "Không tìm thấy người dùng phù hợp",
-                            modifier = Modifier.align(Alignment.Center),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(uiState.filteredUsers) { user ->
-                                UserAdminItem(
-                                    user = user,
-                                    onChangeRole = { newRole -> viewModel.changeUserRole(user.id, newRole) },
-                                    onDelete = { viewModel.deleteUser(user.id) }
-                                )
-                            }
                         }
                     }
                 }
@@ -135,9 +125,7 @@ fun UserAdminItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar
@@ -236,7 +224,7 @@ fun UserAdminItem(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Xác nhận xóa") },
-            text = { Text("Bạn có chắc chắn muốn xóa người dùng ${user.name}? Hành động này sẽ xóa toàn bộ dữ liệu (sách, địa chỉ) của họ.") },
+            text = { Text("Bạn có chắc chắn muốn xóa người dùng ${user.name}? Mọi dữ liệu sách và địa chỉ của họ sẽ bị xóa.") },
             confirmButton = {
                 TextButton(
                     onClick = {
