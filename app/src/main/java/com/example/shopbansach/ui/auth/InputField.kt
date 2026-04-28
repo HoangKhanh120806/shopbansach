@@ -29,7 +29,6 @@ fun AuthTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        // Label sẽ tự động nhảy lên đường viền khi có dữ liệu hoặc được focus
         label = { 
             Text(
                 text = hint,
@@ -39,20 +38,23 @@ fun AuthTextField(
         placeholder = { 
             Text(
                 text = "Nhập $hint...", 
-                color = AuthColors.Hint.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             ) 
         },
         modifier = Modifier.fillMaxWidth(),
-        textStyle = TextStyle(color = AuthColors.Text),
+        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
         
-        // Logic ẩn/hiện mật khẩu
         visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
         
         trailingIcon = {
             if (isPassword) {
                 val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = null, tint = AuthColors.Hint)
+                    Icon(
+                        imageVector = image, 
+                        contentDescription = null, 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         },
@@ -63,14 +65,13 @@ fun AuthTextField(
         ),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AuthColors.Primary,
-            unfocusedBorderColor = AuthColors.Hint.copy(alpha = 0.3f),
-            focusedLabelColor = AuthColors.Primary,
-            unfocusedLabelColor = AuthColors.Hint,
-            // Đảm bảo nền trong suốt để thấy rõ đường viền và nhãn nổi
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
-            cursorColor = AuthColors.Primary
+            cursorColor = MaterialTheme.colorScheme.primary
         ),
         singleLine = true
     )
@@ -85,20 +86,22 @@ fun SearchTextField(
     TextField(
         value = value,
         onValueChange = onValueChange,
-        textStyle = TextStyle(color = AuthColors.Text),
-        placeholder = { Text("Tìm sách...", color = AuthColors.Hint) },
+        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
+        placeholder = { 
+            Text("Tìm sách...", color = MaterialTheme.colorScheme.onSurfaceVariant) 
+        },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = null,
-                tint = AuthColors.Primary.copy(alpha = 0.6f)
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
             )
         },
         shape = RoundedCornerShape(16.dp),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFE4E2DD),
-            unfocusedContainerColor = Color(0xFFE4E2DD),
-            disabledContainerColor = Color(0xFFE4E2DD),
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
         ),

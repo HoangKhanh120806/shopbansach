@@ -30,7 +30,6 @@ import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.navigation.Screen
-import com.example.shopbansach.ui.auth.AuthColors
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -67,11 +66,11 @@ fun ProfileScreen(
                 }
             )
         },
-        containerColor = AuthColors.Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AuthColors.Primary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             Column(
@@ -91,12 +90,12 @@ fun ProfileScreen(
                             fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold
                         ),
-                        color = AuthColors.Primary
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "Cozy Reads Member Since ${user?.memberSince}",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = AuthColors.Hint,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
                     )
 
@@ -106,7 +105,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(120.dp)
                             .clip(RoundedCornerShape(24.dp))
-                            .background(Color(0xFFE4E2DD))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         user?.avatarRes?.let {
                             Icon(
@@ -115,6 +114,13 @@ fun ProfileScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 tint = Color.Unspecified
                             )
+                        } ?: run {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(60.dp).align(Alignment.Center),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            )
                         }
                     }
 
@@ -122,7 +128,9 @@ fun ProfileScreen(
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
@@ -132,7 +140,7 @@ fun ProfileScreen(
                                 ProfileMenuItem(
                                     icon = Icons.Default.AddBusiness,
                                     title = "Bán sách",
-                                    titleColor = AuthColors.Accent,
+                                    titleColor = MaterialTheme.colorScheme.tertiary,
                                     onClick = { /* TODO: Điều hướng trang bán hàng */ }
                                 )
                                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -157,10 +165,26 @@ fun ProfileScreen(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.NightlightRound, null, modifier = Modifier.size(28.dp), tint = AuthColors.Primary)
+                                Icon(
+                                    Icons.Default.NightlightRound, 
+                                    null, 
+                                    modifier = Modifier.size(28.dp), 
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Text("Chế độ tối/sáng", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                                Switch(checked = isDarkTheme, onCheckedChange = { onThemeChange(it) })
+                                Text(
+                                    "Chế độ tối", 
+                                    style = MaterialTheme.typography.bodyLarge, 
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Switch(
+                                    checked = isDarkTheme, 
+                                    onCheckedChange = { onThemeChange(it) },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.tertiary
+                                    )
+                                )
                             }
                             
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -187,12 +211,12 @@ fun ProfileScreen(
                             fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold
                         ),
-                        color = AuthColors.Primary
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "Đăng nhập để xem hồ sơ và đơn hàng của bạn",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = AuthColors.Hint,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
@@ -201,7 +225,9 @@ fun ProfileScreen(
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
@@ -210,10 +236,23 @@ fun ProfileScreen(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.NightlightRound, null, modifier = Modifier.size(28.dp), tint = AuthColors.Primary)
+                                Icon(
+                                    Icons.Default.NightlightRound, 
+                                    null, 
+                                    modifier = Modifier.size(28.dp), 
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Text("Chế độ tối/sáng", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                                Switch(checked = isDarkTheme, onCheckedChange = { onThemeChange(it) })
+                                Text(
+                                    "Chế độ tối", 
+                                    style = MaterialTheme.typography.bodyLarge, 
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Switch(
+                                    checked = isDarkTheme, 
+                                    onCheckedChange = { onThemeChange(it) }
+                                )
                             }
 
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -222,7 +261,7 @@ fun ProfileScreen(
                             ProfileMenuItem(
                                 icon = Icons.Default.Login,
                                 title = "Đăng nhập ngay",
-                                titleColor = AuthColors.Accent,
+                                titleColor = MaterialTheme.colorScheme.tertiary,
                                 onClick = {
                                     navController.navigate(Screen.Login.route)
                                 }
@@ -239,7 +278,7 @@ fun ProfileScreen(
 fun ProfileMenuItem(
     icon: ImageVector,
     title: String,
-    titleColor: Color = AuthColors.Primary,
+    titleColor: Color = MaterialTheme.colorScheme.primary,
     onClick: () -> Unit
 ) {
     Row(
@@ -262,11 +301,11 @@ fun ProfileMenuItem(
             color = titleColor,
             modifier = Modifier.weight(1f)
         )
-        if (titleColor != Color.Red && titleColor != AuthColors.Accent) {
+        if (titleColor != Color.Red && titleColor != MaterialTheme.colorScheme.tertiary) {
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = AuthColors.Hint
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

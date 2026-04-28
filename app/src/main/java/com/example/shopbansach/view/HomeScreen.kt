@@ -28,7 +28,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.navigation.Screen
-import com.example.shopbansach.ui.auth.AuthColors
 import com.example.shopbansach.viewmodel.HomeViewModel
 
 @Composable
@@ -49,7 +48,7 @@ fun HomeScreen(
                 }
             )
         },
-        containerColor = AuthColors.Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -84,25 +83,29 @@ fun HomeHeader(navController: NavController) {
                     fontFamily = FontFamily.Serif,
                     letterSpacing = (-1).sp
                 ),
-                color = AuthColors.Primary
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = "Thế giới sách trong tầm tay",
                 style = MaterialTheme.typography.bodySmall,
-                color = AuthColors.Hint
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Default.NotificationsNone, contentDescription = null, tint = AuthColors.Primary)
+                Icon(
+                    Icons.Default.NotificationsNone, 
+                    contentDescription = null, 
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
             Spacer(modifier = Modifier.width(4.dp))
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE4E2DD))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable {
                         navController.navigate(Screen.Profile.route)
                     },
@@ -111,7 +114,7 @@ fun HomeHeader(navController: NavController) {
                 Icon(
                     Icons.Default.Person, 
                     contentDescription = null, 
-                    tint = AuthColors.Primary
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -133,12 +136,12 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
-                color = AuthColors.Primary
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = "Xem tất cả",
                 style = MaterialTheme.typography.labelLarge,
-                color = AuthColors.Accent,
+                color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.clickable { /* TODO */ }
             )
         }
@@ -169,12 +172,12 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                 .height(230.dp)
                 .shadow(8.dp, RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
-                .background(AuthColors.Surface)
+                .background(MaterialTheme.colorScheme.surface)
         ) {
             Text(
                 "COVER",
                 modifier = Modifier.align(Alignment.Center),
-                color = AuthColors.Primary.copy(alpha = 0.1f),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 fontWeight = FontWeight.Bold
             )
         }
@@ -186,12 +189,12 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
             fontSize = 16.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = AuthColors.Primary
+            color = MaterialTheme.colorScheme.primary
         )
         Text(
             text = book.author,
             fontSize = 12.sp,
-            color = AuthColors.Hint,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1
         )
     }
@@ -204,7 +207,7 @@ fun NewArrivalsHeader() {
         fontFamily = FontFamily.Serif,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
-        color = AuthColors.Primary,
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 16.dp)
     )
 }
@@ -216,9 +219,11 @@ fun NewArrivalItem(book: Book, navController: NavController) {
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 8.dp)
             .clickable { navController.navigate(Screen.BookDetail.createRoute(book.id)) },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -230,7 +235,7 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                 modifier = Modifier
                     .size(60.dp, 85.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(AuthColors.Surface)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -238,14 +243,14 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                     text = book.title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = AuthColors.Primary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = book.author,
                     fontSize = 13.sp,
-                    color = AuthColors.Hint
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -261,14 +266,14 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                         text = " ${book.rating}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AuthColors.Primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
             Text(
                 text = book.price,
                 fontWeight = FontWeight.ExtraBold,
-                color = AuthColors.Accent,
+                color = MaterialTheme.colorScheme.tertiary,
                 fontSize = 15.sp
             )
         }
