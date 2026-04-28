@@ -114,4 +114,31 @@ class AuthRepository {
             Result.failure(e)
         }
     }
+
+    // Chức năng dành cho Admin
+    suspend fun getAllUsers(): List<User> {
+        // Không dùng try-catch ở đây để ViewModel có thể bắt được lỗi chính xác (như lỗi quyền truy cập Firestore)
+        val snapshot = firestore.collection("users").get().await()
+        return snapshot.toObjects(User::class.java)
+    }
+
+    suspend fun updateUserRole(userId: String, newRole: UserRole): Result<Unit> {
+        return try {
+            firestore.collection("users").document(userId)
+                .update("role", newRole)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteUserByAdmin(userId: String): Result<Unit> {
+        return try {
+            firestore.collection("users").document(userId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

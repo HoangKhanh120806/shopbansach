@@ -33,4 +33,6 @@ sealed class Screen(val route : String){
     object AddBook : Screen("add_book")
 
     object AdminHome : Screen("admin_home")
+    
+    object AdminUserManage : Screen("admin_user_manage")
 }

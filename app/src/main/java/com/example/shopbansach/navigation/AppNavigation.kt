@@ -126,6 +126,10 @@ fun AppNavigation(
             composable(route = Screen.AdminHome.route) {
                 AdminHomeScreen(navController = navController)
             }
+
+            composable(route = Screen.AdminUserManage.route) {
+                AdminUserManageScreen(navController = navController)
+            }
         }
     }
 }

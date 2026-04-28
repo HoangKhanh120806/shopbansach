@@ -68,7 +68,6 @@ fun AdminHomeScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Welcome Section
             Text(
                 text = "Chào mừng trở lại, Admin",
                 style = MaterialTheme.typography.headlineSmall,
@@ -83,12 +82,12 @@ fun AdminHomeScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Admin Functions Grid
+            // Danh sách các chức năng admin
             val adminFunctions = listOf(
-                AdminFunction("Quản lý Sách", Icons.Default.Book, Color(0xFF4CAF50)),
-                AdminFunction("Quản lý Người dùng", Icons.Default.People, Color(0xFF2196F3)),
-                AdminFunction("Quản lý Đơn hàng", Icons.Default.ShoppingBag, Color(0xFFFF9800)),
-                AdminFunction("Thống kê", Icons.Default.Dashboard, Color(0xFF9C27B0))
+                AdminFunction("Quản lý Sách", Icons.Default.Book, Color(0xFF4CAF50), ""),
+                AdminFunction("Quản lý Người dùng", Icons.Default.People, Color(0xFF2196F3), Screen.AdminUserManage.route),
+                AdminFunction("Quản lý Đơn hàng", Icons.Default.ShoppingBag, Color(0xFFFF9800), ""),
+                AdminFunction("Thống kê", Icons.Default.Dashboard, Color(0xFF9C27B0), "")
             )
 
             LazyVerticalGrid(
@@ -98,7 +97,11 @@ fun AdminHomeScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 items(adminFunctions) { function ->
-                    AdminCard(function)
+                    AdminCard(function) {
+                        if (function.route.isNotEmpty()) {
+                            navController.navigate(function.route)
+                        }
+                    }
                 }
             }
         }
@@ -108,16 +111,17 @@ fun AdminHomeScreen(navController: NavController) {
 data class AdminFunction(
     val title: String,
     val icon: ImageVector,
-    val color: Color
+    val color: Color,
+    val route: String
 )
 
 @Composable
-fun AdminCard(function: AdminFunction) {
+fun AdminCard(function: AdminFunction, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
-            .clickable { /* TODO */ },
+            .clickable { onClick() }, // Đã thêm sự kiện click ở đây
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
