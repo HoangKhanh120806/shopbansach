@@ -1,7 +1,6 @@
 package com.example.shopbansach.data.repository
 
 import android.net.Uri
-import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.model.UserRole
 import com.google.firebase.auth.EmailAuthProvider
@@ -165,24 +164,12 @@ class AuthRepository {
         auth.signOut()
     }
 
-    /**
-     * Tự xóa tài khoản và dọn dẹp sách + ảnh của chính mình
-     * @param cloudinaryRepository Cần truyền vào để xóa ảnh thực tế
-     */
-    suspend fun deleteAccount(cloudinaryRepository: CloudinaryRepository? = null): Result<Unit> {
+    suspend fun deleteAccount(): Result<Unit> {
         return try {
             val user = auth.currentUser ?: throw Exception("No user logged in")
             val userId = user.uid
-            
-            // 1. Dọn dẹp sách và ảnh
-            deleteAllUserBooksAndImages(userId, cloudinaryRepository)
-            
-            // 2. Xóa thông tin user trong Firestore
             firestore.collection("users").document(userId).delete().await()
-            
-            // 3. Xóa tài khoản Auth
             user.delete().await()
-            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -205,49 +192,12 @@ class AuthRepository {
         }
     }
 
-    /**
-     * Admin xóa người dùng và dọn dẹp luôn các sách + ảnh của người đó
-     */
-    suspend fun deleteUserByAdmin(userId: String, cloudinaryRepository: CloudinaryRepository? = null): Result<Unit> {
+    suspend fun deleteUserByAdmin(userId: String): Result<Unit> {
         return try {
-            // 1. Dọn dẹp sách và ảnh
-            deleteAllUserBooksAndImages(userId, cloudinaryRepository)
-            
-            // 2. Xóa thông tin user trong Firestore
             firestore.collection("users").document(userId).delete().await()
-            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
-        }
-    }
-
-    /**
-     * Hàm dọn dẹp: Tìm tất cả sách, xóa ảnh trên Cloudinary, sau đó xóa document trên Firestore
-     */
-    private suspend fun deleteAllUserBooksAndImages(userId: String, cloudinaryRepository: CloudinaryRepository?) {
-        try {
-            val booksSnapshot = firestore.collection("books")
-                .whereEqualTo("ownerId", userId)
-                .get()
-                .await()
-            
-            if (!booksSnapshot.isEmpty) {
-                val batch = firestore.batch()
-                for (doc in booksSnapshot.documents) {
-                    val book = doc.toObject(Book::class.java)
-                    
-                    // Xóa ảnh trên Cloudinary nếu có publicId và repository
-                    book?.imagePublicId?.let { publicId ->
-                        cloudinaryRepository?.deleteImage(publicId)
-                    }
-                    
-                    batch.delete(doc.reference)
-                }
-                batch.commit().await()
-            }
-        } catch (e: Exception) {
-            // Log lỗi dọn dẹp nếu cần
         }
     }
 }

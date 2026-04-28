@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
-import com.example.shopbansach.data.repository.CloudinaryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,10 +17,7 @@ data class AdminUserUiState(
     val errorMessage: String? = null
 )
 
-class AdminUserViewModel(
-    private val cloudinaryRepository: CloudinaryRepository,
-    private val repository: AuthRepository = AuthRepository()
-) : ViewModel() {
+class AdminUserViewModel(private val repository: AuthRepository = AuthRepository()) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AdminUserUiState())
     val uiState: StateFlow<AdminUserUiState> = _uiState.asStateFlow()
@@ -46,17 +42,16 @@ class AdminUserViewModel(
         viewModelScope.launch {
             val result = repository.updateUserRole(userId, newRole)
             if (result.isSuccess) {
-                loadUsers() 
+                loadUsers() // Refresh list
             }
         }
     }
 
     fun deleteUser(userId: String) {
         viewModelScope.launch {
-            // Truyền cloudinaryRepository để dọn dẹp ảnh bìa sách của user bị xóa
-            val result = repository.deleteUserByAdmin(userId, cloudinaryRepository)
+            val result = repository.deleteUserByAdmin(userId)
             if (result.isSuccess) {
-                loadUsers()
+                loadUsers() // Refresh list
             }
         }
     }

@@ -1,7 +1,6 @@
 package com.example.shopbansach.data.repository
 
 import com.example.shopbansach.data.model.Book
-import com.example.shopbansach.data.model.UserRole
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -93,6 +92,9 @@ class FirebaseBookRepository {
         }
     }
 
+    /**
+     * Lưu sách an toàn: Kiểm tra quyền sở hữu nếu là cập nhật
+     */
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
@@ -102,12 +104,7 @@ class FirebaseBookRepository {
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
                 if (ownerId != currentUserId) {
-                    // Kiểm tra xem có phải Admin không
-                    val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
-                    val role = userSnapshot.getString("role")
-                    if (role != UserRole.ADMIN.name) {
-                        throw Exception("Bạn không có quyền chỉnh sửa sách này")
-                    }
+                    throw Exception("Bạn không có quyền chỉnh sửa sách này")
                 }
             }
             
@@ -136,37 +133,19 @@ class FirebaseBookRepository {
     }
 
     /**
-     * Xóa sách an toàn: Kiểm tra quyền sở hữu hoặc quyền Admin
-     * @param cloudinaryRepository Nếu truyền vào sẽ dọn dẹp ảnh trên Cloudinary
+     * Xóa sách an toàn: Kiểm tra quyền sở hữu
      */
-    suspend fun deleteBook(bookId: String, cloudinaryRepository: CloudinaryRepository? = null): Result<Unit> {
+    suspend fun deleteBook(bookId: String): Result<Unit> {
         return try {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
             val docRef = booksCollection.document(bookId)
             val existingDoc = docRef.get().await()
 
             if (existingDoc.exists()) {
-                val book = existingDoc.toObject(Book::class.java)
-                val ownerId = book?.ownerId
-                
-                var isAuthorized = ownerId == currentUserId
-                
-                if (!isAuthorized) {
-                    // Kiểm tra quyền Admin
-                    val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
-                    val role = userSnapshot.getString("role")
-                    isAuthorized = role == UserRole.ADMIN.name
-                }
-
-                if (!isAuthorized) {
+                val ownerId = existingDoc.getString("ownerId")
+                if (ownerId != currentUserId) {
                     throw Exception("Bạn không có quyền xóa sách này")
                 }
-
-                // Dọn dẹp ảnh trên Cloudinary
-                book?.imagePublicId?.let { publicId ->
-                    cloudinaryRepository?.deleteImage(publicId)
-                }
-
                 docRef.delete().await()
             }
             Result.success(Unit)
