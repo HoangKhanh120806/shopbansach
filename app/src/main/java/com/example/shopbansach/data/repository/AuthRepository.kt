@@ -1,28 +1,30 @@
 package com.example.shopbansach.data.repository
 
+import android.net.Uri
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.model.UserRole
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
 class AuthRepository {
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
 
     suspend fun registerUser(name: String, email: String, password: String): Result<Unit> {
         return try {
-            // 1. Tạo tài khoản trong Firebase Auth
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
             val userId = authResult.user?.uid ?: throw Exception("User creation failed")
 
-            // 2. Thêm thông tin người dùng vào Firestore với quyền USER mặc định
             val user = User(
                 id = userId,
                 name = name,
                 email = email,
                 memberSince = "2024",
-                role = UserRole.USER // Mặc định là USER
+                role = UserRole.USER
             )
             
             firestore.collection("users")
@@ -45,7 +47,6 @@ class AuthRepository {
         }
     }
 
-    // Lấy thông tin user hiện tại bao gồm cả Role
     suspend fun getCurrentUserData(): User? {
         val firebaseUser = auth.currentUser ?: return null
         return try {
@@ -53,6 +54,48 @@ class AuthRepository {
             snapshot.toObject(User::class.java)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    suspend fun updateUserProfile(userId: String, name: String, avatarUrl: String? = null): Result<Unit> {
+        return try {
+            val updates = mutableMapOf<String, Any>("name" to name)
+            if (avatarUrl != null) {
+                updates["avatarUrl"] = avatarUrl
+            }
+            
+            firestore.collection("users").document(userId)
+                .update(updates)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadAvatar(userId: String, imageUri: Uri): Result<String> {
+        return try {
+            val ref = storage.reference.child("avatars/$userId.jpg")
+            ref.putFile(imageUri).await()
+            val url = ref.downloadUrl.await().toString()
+            Result.success(url)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: throw Exception("Chưa đăng nhập")
+            val email = user.email ?: throw Exception("Không tìm thấy email")
+            
+            val credential = EmailAuthProvider.getCredential(email, currentPassword)
+            user.reauthenticate(credential).await()
+            
+            user.updatePassword(newPassword).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -64,13 +107,8 @@ class AuthRepository {
         return try {
             val user = auth.currentUser ?: throw Exception("No user logged in")
             val userId = user.uid
-
-            // 1. Xóa thông tin trong Firestore
             firestore.collection("users").document(userId).delete().await()
-
-            // 2. Xóa tài khoản trong Firebase Auth
             user.delete().await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

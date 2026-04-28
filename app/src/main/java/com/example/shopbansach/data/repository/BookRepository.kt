@@ -1,6 +1,5 @@
 package com.example.shopbansach.data.repository
 
-import com.example.shopbansach.R
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.User
 
@@ -18,7 +17,6 @@ class BookRepository {
     fun getNewArrivals(): List<Book> = allBooks.shuffled().take(5)
     fun getBookById(id: Int): Book? = allBooks.find { it.id == id }
     
-    // Sửa lỗi IndexOutOfBounds bằng cách lấy an toàn
     fun getSuggestions(): List<Book> = allBooks.shuffled().take(3)
     fun getCartItems(): List<Book> = allBooks.take(2)
 
@@ -34,6 +32,6 @@ class BookRepository {
         id = "1",
         name = "Sophia Nguyen",
         memberSince = "2020",
-        avatarRes = null // Tạm thời để null nếu không chắc chắn có file R.drawable.anh1
+        avatarUrl = null // Đã đổi từ avatarRes sang avatarUrl
     )
 }

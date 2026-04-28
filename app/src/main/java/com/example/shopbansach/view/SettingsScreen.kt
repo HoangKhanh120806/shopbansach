@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.navigation.Screen
-import com.example.shopbansach.ui.auth.AuthColors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,11 +77,11 @@ fun SettingsScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = AuthColors.Background
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
-        containerColor = AuthColors.Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -95,7 +94,7 @@ fun SettingsScreen(navController: NavController) {
             ProfileMenuItem(
                 icon = Icons.Default.Person,
                 title = "Chỉnh sửa hồ sơ",
-                onClick = {  }
+                onClick = { navController.navigate(Screen.EditProfile.route) }
             )
             
             HorizontalDivider(thickness = 0.5.dp)

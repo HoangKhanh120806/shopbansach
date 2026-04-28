@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.example.shopbansach.navigation.Screen
-import com.example.shopbansach.ui.auth.AuthColors
 
 @Composable
 fun BottomBar(
@@ -20,7 +19,7 @@ fun BottomBar(
     onNavigate: (String) -> Unit = {}
 ) {
     NavigationBar(
-        containerColor = AuthColors.Background,
+        containerColor = MaterialTheme.colorScheme.background,
         tonalElevation = 8.dp,
         modifier = Modifier.clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
     ) {
@@ -30,11 +29,11 @@ fun BottomBar(
             icon = { Icon(Icons.Default.Home, contentDescription = "Trang chủ") },
             label = { Text("Trang chủ") },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = AuthColors.Primary,
-                selectedTextColor = AuthColors.Primary,
-                indicatorColor = AuthColors.Accent.copy(alpha = 0.3f),
-                unselectedIconColor = AuthColors.Hint,
-                unselectedTextColor = AuthColors.Hint
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
 
@@ -44,11 +43,11 @@ fun BottomBar(
             icon = { Icon(Icons.Default.Search, contentDescription = "Tìm kiếm") },
             label = { Text("Tìm kiếm") },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = AuthColors.Primary,
-                selectedTextColor = AuthColors.Primary,
-                indicatorColor = AuthColors.Accent.copy(alpha = 0.3f),
-                unselectedIconColor = AuthColors.Hint,
-                unselectedTextColor = AuthColors.Hint
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
 
@@ -58,25 +57,25 @@ fun BottomBar(
             icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Giỏ hàng") },
             label = { Text("Giỏ hàng") },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = AuthColors.Primary,
-                selectedTextColor = AuthColors.Primary,
-                indicatorColor = AuthColors.Accent.copy(alpha = 0.3f),
-                unselectedIconColor = AuthColors.Hint,
-                unselectedTextColor = AuthColors.Hint
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
 
         NavigationBarItem(
-            selected = currentRoute == "profile",
-            onClick = { onNavigate("profile") },
+            selected = currentRoute == Screen.Profile.route,
+            onClick = { onNavigate(Screen.Profile.route) },
             icon = { Icon(Icons.Default.Person, contentDescription = "Hồ sơ") },
             label = { Text("Hồ sơ") },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = AuthColors.Primary,
-                selectedTextColor = AuthColors.Primary,
-                indicatorColor = AuthColors.Accent.copy(alpha = 0.3f),
-                unselectedIconColor = AuthColors.Hint,
-                unselectedTextColor = AuthColors.Hint
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
     }

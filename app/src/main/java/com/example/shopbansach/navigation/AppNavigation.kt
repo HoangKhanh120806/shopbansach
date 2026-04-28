@@ -54,6 +54,10 @@ fun AppNavigation(
             SettingsScreen(navController = navController)
         }
 
+        composable(route = Screen.EditProfile.route) {
+            EditProfileScreen(navController = navController)
+        }
+
         composable(
             route = Screen.BookDetail.route,
             arguments = listOf(navArgument("bookId") { type = NavType.IntType })

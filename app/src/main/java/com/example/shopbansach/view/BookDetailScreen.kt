@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.shopbansach.data.repository.BookRepository
-import com.example.shopbansach.ui.auth.AuthColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,7 +32,7 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
 
     if (book == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Không tìm thấy sách")
+            Text("Không tìm thấy sách", color = MaterialTheme.colorScheme.onSurface)
         }
         return
     }
@@ -44,7 +43,11 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
                 title = { },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "Quay lại",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -62,7 +65,9 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    ),
                     shape = RoundedCornerShape(28.dp)
                 ) {
                     Text("Đọc thử", color = Color.White, fontSize = 16.sp)
@@ -72,14 +77,16 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFAC865C)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    ),
                     shape = RoundedCornerShape(28.dp)
                 ) {
                     Text("Mua ngay", color = Color.White, fontSize = 16.sp)
                 }
             }
         },
-        containerColor = AuthColors.Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -96,12 +103,12 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
                     .height(300.dp)
                     .shadow(16.dp, RoundedCornerShape(8.dp))
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Text(
                     "COVER",
                     modifier = Modifier.align(Alignment.Center),
-                    color = Color.DarkGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -114,14 +121,14 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold
                 ),
-                color = AuthColors.Primary,
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
             Text(
                 text = book.author,
                 style = MaterialTheme.typography.titleMedium,
-                color = AuthColors.Hint,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -142,25 +149,51 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
                         }
                         Icon(Icons.Default.Star, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
                     }
-                    Text(text = "${book.rating}/5", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+                    Text(
+                        text = "${book.rating}/5", 
+                        fontWeight = FontWeight.Bold, 
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
 
-                VerticalDivider(modifier = Modifier.height(40.dp), thickness = 1.dp, color = Color.LightGray)
+                VerticalDivider(
+                    modifier = Modifier.height(40.dp), 
+                    thickness = 1.dp, 
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${book.pages}", fontWeight = FontWeight.Bold)
-                    Text(text = "Pages", color = AuthColors.Hint, fontSize = 14.sp)
+                    Text(
+                        text = "${book.pages}", 
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Trang", 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, 
+                        fontSize = 14.sp
+                    )
                 }
 
-                VerticalDivider(modifier = Modifier.height(40.dp), thickness = 1.dp, color = Color.LightGray)
+                VerticalDivider(
+                    modifier = Modifier.height(40.dp), 
+                    thickness = 1.dp, 
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
 
-                Text(text = book.price, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(
+                    text = book.price, 
+                    fontWeight = FontWeight.Bold, 
+                    fontSize = 20.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
             HorizontalDivider(
                 modifier = Modifier.padding(24.dp),
                 thickness = 1.dp,
-                color = Color.LightGray.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.outlineVariant
             )
 
             // Synopsis
@@ -170,18 +203,18 @@ fun BookDetailScreen(navController: NavController, bookId: Int) {
                     .padding(horizontal = 24.dp)
             ) {
                 Text(
-                    text = "Synopsis",
+                    text = "Tóm tắt",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold
                     ),
-                    color = AuthColors.Primary
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = book.synopsis,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = AuthColors.Primary.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 24.sp
                 )
             }

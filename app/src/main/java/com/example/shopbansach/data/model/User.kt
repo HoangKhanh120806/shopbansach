@@ -11,6 +11,6 @@ data class User(
     val name: String = "",
     val email: String = "",
     val memberSince: String = "2024",
-    val avatarRes: Int? = null,
-    val role: UserRole = UserRole.USER // Mặc định là USER
+    val avatarUrl: String? = null, // Đổi từ avatarRes sang avatarUrl để lưu link ảnh từ Cloud
+    val role: UserRole = UserRole.USER
 )

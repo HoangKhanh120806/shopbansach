@@ -51,14 +51,15 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
     
-    // ĐÃ LOẠI BỎ animation-core-lint gây lỗi
-    
     implementation("androidx.compose.material:material-icons-extended")
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.volley)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Cloudinary
+    implementation("com.cloudinary:cloudinary-android:2.3.1")
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))

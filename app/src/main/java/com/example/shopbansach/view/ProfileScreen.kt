@@ -5,11 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.AddBusiness
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.NightlightRound
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -19,13 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.shopbansach.R
+import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
@@ -107,14 +106,14 @@ fun ProfileScreen(
                             .clip(RoundedCornerShape(24.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        user?.avatarRes?.let {
-                            Icon(
-                                painter = painterResource(id = it),
+                        if (!user?.avatarUrl.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = user?.avatarUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                tint = Color.Unspecified
+                                contentScale = ContentScale.Crop
                             )
-                        } ?: run {
+                        } else {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = null,
@@ -191,7 +190,7 @@ fun ProfileScreen(
                             
                             // Đăng xuất
                             ProfileMenuItem(
-                                icon = Icons.Default.ExitToApp,
+                                icon = Icons.AutoMirrored.Filled.ExitToApp,
                                 title = "Đăng xuất",
                                 titleColor = Color.Red,
                                 onClick = {
@@ -259,7 +258,7 @@ fun ProfileScreen(
 
                             // Nút Đăng nhập
                             ProfileMenuItem(
-                                icon = Icons.Default.Login,
+                                icon = Icons.AutoMirrored.Filled.Login,
                                 title = "Đăng nhập ngay",
                                 titleColor = MaterialTheme.colorScheme.tertiary,
                                 onClick = {

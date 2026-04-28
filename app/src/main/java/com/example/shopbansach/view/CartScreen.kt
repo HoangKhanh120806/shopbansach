@@ -26,7 +26,6 @@ import androidx.navigation.NavController
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.repository.BookRepository
 import com.example.shopbansach.navigation.Screen
-import com.example.shopbansach.ui.auth.AuthColors
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +39,7 @@ fun CartScreen(navController: NavController) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Shopping Cart",
+                        "Giỏ hàng",
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold
                     )
@@ -51,26 +50,26 @@ fun CartScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = AuthColors.Background
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
         bottomBar = {
             Column {
-                // Nút Checkout
                 Button(
                     onClick = { navController.navigate(Screen.Checkout.route) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                         .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC89C81)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Proceed to Checkout", fontSize = 18.sp, color = Color.White)
+                    Text("Tiến hành thanh toán", fontSize = 18.sp, color = Color.White)
                 }
                 
-                // Bottom Navigation
                 BottomBar(
                     currentRoute = Screen.Cart.route,
                     onNavigate = { route ->
@@ -81,7 +80,7 @@ fun CartScreen(navController: NavController) {
                 )
             }
         },
-        containerColor = AuthColors.Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -96,8 +95,7 @@ fun CartScreen(navController: NavController) {
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                // Ở đây chúng ta tạm tính dựa trên dữ liệu mẫu từ Repository
-                SummarySection(subtotal = 520.0, shipping = 30.0)
+                SummarySection(subtotal = 520000.0, shipping = 30000.0)
             }
         }
     }
@@ -109,13 +107,12 @@ fun CartItemRow(item: Book) {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Book Cover Placeholder
         Box(
             modifier = Modifier
                 .size(80.dp, 110.dp)
                 .shadow(4.dp, RoundedCornerShape(4.dp))
                 .clip(RoundedCornerShape(4.dp))
-                .background(AuthColors.Surface)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         )
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -125,12 +122,13 @@ fun CartItemRow(item: Book) {
                 text = item.title,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                fontFamily = FontFamily.Serif
+                fontFamily = FontFamily.Serif,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = item.author,
                 fontSize = 14.sp,
-                color = AuthColors.Hint
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -143,21 +141,38 @@ fun CartItemRow(item: Book) {
                 Text(
                     text = item.price,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, contentDescription = null, tint = AuthColors.Hint)
+                        Icon(
+                            Icons.Default.Remove, 
+                            contentDescription = null, 
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    Text("1", modifier = Modifier.padding(horizontal = 8.dp))
+                    Text(
+                        "1", 
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = AuthColors.Hint)
+                        Icon(
+                            Icons.Default.Add, 
+                            contentDescription = null, 
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 
                 IconButton(onClick = { /* TODO */ }) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = AuthColors.Hint)
+                    Icon(
+                        Icons.Default.DeleteOutline, 
+                        contentDescription = null, 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -173,18 +188,36 @@ fun SummarySection(subtotal: Double, shipping: Double) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Subtotal", color = AuthColors.Primary)
-                Text(String.format(Locale.US, "₫%.0f", subtotal), fontWeight = FontWeight.Bold)
+                Text("Tạm tính", color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    String.format(Locale.US, "₫%.0f", subtotal), 
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Shipping", color = AuthColors.Primary)
-                Text(String.format(Locale.US, "₫%.0f", shipping), fontWeight = FontWeight.Bold)
+                Text("Phí vận chuyển", color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    String.format(Locale.US, "₫%.0f", shipping), 
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(String.format(Locale.US, "₫%.0f", subtotal + shipping), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                Text(
+                    "Tổng cộng", 
+                    fontWeight = FontWeight.Bold, 
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    String.format(Locale.US, "₫%.0f", subtotal + shipping), 
+                    fontWeight = FontWeight.ExtraBold, 
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
