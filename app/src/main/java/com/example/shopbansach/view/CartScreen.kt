@@ -12,27 +12,35 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
-import com.example.shopbansach.data.repository.BookRepository
 import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.viewmodel.HomeViewModel
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CartScreen(navController: NavController) {
-    val repository = remember { BookRepository() }
-    val cartItems = remember { repository.getCartItems() }
+fun CartScreen(
+    navController: NavController,
+    viewModel: HomeViewModel = viewModel() // Tạm dùng HomeViewModel hoặc tạo CartViewModel riêng
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val cartItems = uiState.newArrivals.take(2) // Tạm thời lấy dữ liệu thật từ newArrivals
 
     Scaffold(
         topBar = {
@@ -82,20 +90,26 @@ fun CartScreen(navController: NavController) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(24.dp)
-        ) {
-            items(cartItems) { item ->
-                CartItemRow(item)
-                Spacer(modifier = Modifier.height(24.dp))
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(24.dp)
+            ) {
+                items(cartItems) { item ->
+                    CartItemRow(item)
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SummarySection(subtotal = 520000.0, shipping = 30000.0)
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SummarySection(subtotal = 520000.0, shipping = 30000.0)
+                }
             }
         }
     }
@@ -113,7 +127,16 @@ fun CartItemRow(item: Book) {
                 .shadow(4.dp, RoundedCornerShape(4.dp))
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
+        ) {
+            if (!item.imageUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
         
         Spacer(modifier = Modifier.width(16.dp))
         
