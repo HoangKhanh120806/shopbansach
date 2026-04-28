@@ -20,7 +20,10 @@ sealed class Screen(val route : String){
         fun createRoute(bookId: String) = "book_detail/$bookId"
     }
 
-    object Checkout : Screen("checkout")
+    object Checkout : Screen("checkout?bookId={bookId}&quantity={quantity}") {
+        fun createRoute(bookId: String? = null, quantity: Int = 1) = 
+            if (bookId != null) "checkout?bookId=$bookId&quantity=$quantity" else "checkout"
+    }
 
     object ThankYou : Screen("thank_you")
 
@@ -44,5 +47,9 @@ sealed class Screen(val route : String){
     
     object AddEditAddress : Screen("add_edit_address/{addressId}") {
         fun createRoute(addressId: String = "new") = "add_edit_address/$addressId"
+    }
+
+    object SellerShop : Screen("seller_shop/{sellerId}") {
+        fun createRoute(sellerId: String) = "seller_shop/$sellerId"
     }
 }

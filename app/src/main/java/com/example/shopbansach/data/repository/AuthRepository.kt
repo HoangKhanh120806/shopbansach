@@ -67,6 +67,17 @@ class AuthRepository {
         }
     }
 
+    suspend fun getUserById(userId: String): User? {
+        if (userId.isEmpty()) return null
+        return try {
+            val snapshot = firestore.collection("users").document(userId).get().await()
+            if (!snapshot.exists()) return null
+            snapshot.toObject(User::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun updateUserProfile(userId: String, name: String, avatarUrl: String? = null): Result<Unit> {
         return try {
             val updates = mutableMapOf<String, Any>("name" to name)
@@ -76,6 +87,17 @@ class AuthRepository {
             
             firestore.collection("users").document(userId)
                 .update(updates)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateShopName(userId: String, shopName: String): Result<Unit> {
+        return try {
+            firestore.collection("users").document(userId)
+                .update("shopName", shopName)
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {

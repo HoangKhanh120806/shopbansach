@@ -17,7 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
@@ -106,7 +105,10 @@ fun CartScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp).navigationBarsPadding()) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .clickable { viewModel.toggleSelectAll(!isAllSelected) },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -162,7 +164,7 @@ fun CartScreen(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    items(uiState.cartItems) { item ->
+                    items(uiState.cartItems, key = { it.bookId }) { item ->
                         CartItemCard(
                             item = item,
                             onToggleSelection = { viewModel.toggleSelection(item.bookId, it) },
@@ -198,7 +200,10 @@ fun CartItemCard(
     onRemove: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onToggleSelection(!item.isSelected) },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -247,10 +252,12 @@ fun CartItemCard(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), 
-                            RoundedCornerShape(8.dp)
-                        )
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), 
+                                RoundedCornerShape(8.dp)
+                            )
+                            .clickable(enabled = false) {} // Prevent card click when clicking quantity area
                     ) {
                         IconButton(onClick = onDecrease, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Default.Remove, null, modifier = Modifier.size(14.dp))
@@ -266,7 +273,10 @@ fun CartItemCard(
                         }
                     }
                     
-                    IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+                    IconButton(
+                        onClick = onRemove, 
+                        modifier = Modifier.size(28.dp)
+                    ) {
                         Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(20.dp), tint = Color.Gray)
                     }
                 }

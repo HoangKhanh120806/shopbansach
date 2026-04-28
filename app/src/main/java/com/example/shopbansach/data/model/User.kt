@@ -10,7 +10,8 @@ data class User(
     val id: String = "",
     val name: String = "",
     val email: String = "",
+    val shopName: String? = null, // Tên shop riêng
     val memberSince: String = "2024",
-    val avatarUrl: String? = null, // Đổi từ avatarRes sang avatarUrl để lưu link ảnh từ Cloud
+    val avatarUrl: String? = null,
     val role: UserRole = UserRole.USER
 )

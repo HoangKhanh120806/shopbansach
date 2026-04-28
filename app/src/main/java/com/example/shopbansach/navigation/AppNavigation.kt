@@ -73,8 +73,23 @@ fun AppNavigation(
                 CartScreen(navController = navController)
             }
 
-            composable(route = Screen.Checkout.route) {
-                CheckoutScreen(navController = navController)
+            composable(
+                route = Screen.Checkout.route,
+                arguments = listOf(
+                    navArgument("bookId") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument("quantity") { 
+                        type = NavType.IntType
+                        defaultValue = 1
+                    }
+                )
+            ) { backStackEntry ->
+                val bookId = backStackEntry.arguments?.getString("bookId")
+                val quantity = backStackEntry.arguments?.getInt("quantity") ?: 1
+                CheckoutScreen(navController = navController, buyNowBookId = bookId, buyNowQuantity = quantity)
             }
 
             composable(route = Screen.ThankYou.route) {
@@ -152,6 +167,14 @@ fun AppNavigation(
             ) { backStackEntry ->
                 val addressId = backStackEntry.arguments?.getString("addressId") ?: "new"
                 AddEditAddressScreen(navController = navController, addressId = addressId)
+            }
+            
+            composable(
+                route = Screen.SellerShop.route,
+                arguments = listOf(navArgument("sellerId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val sellerId = backStackEntry.arguments?.getString("sellerId") ?: ""
+                SellerShopScreen(navController = navController, sellerId = sellerId)
             }
         }
     }

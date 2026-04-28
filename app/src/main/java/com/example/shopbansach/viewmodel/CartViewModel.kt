@@ -46,7 +46,7 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
         }
     }
 
-    fun addToCart(book: Book) {
+    fun addToCart(book: Book, quantity: Int = 1, forceSelected: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(actionState = CartActionState.Loading) }
             val item = CartItem(
@@ -55,10 +55,10 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
                 price = book.price,
                 imageUrl = book.imageUrl,
                 author = book.author,
-                quantity = 1,
-                isSelected = false // Mặc định không chọn khi mới thêm
+                quantity = quantity,
+                isSelected = forceSelected
             )
-            val result = repository.addToCart(item)
+            val result = repository.addToCart(item, forceSelected)
             if (result.isSuccess) {
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
@@ -69,29 +69,55 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
     }
 
     fun updateQuantity(bookId: String, newQuantity: Int) {
+        // Cập nhật cục bộ trước (Optimistic UI)
+        _uiState.update { state ->
+            state.copy(
+                cartItems = state.cartItems.map { 
+                    if (it.bookId == bookId) it.copy(quantity = if (newQuantity < 1) 1 else newQuantity) else it 
+                }
+            )
+        }
+        
         viewModelScope.launch {
             val result = repository.updateQuantity(bookId, newQuantity)
-            if (result.isSuccess) {
-                loadCartItems()
+            if (!result.isSuccess) {
+                loadCartItems() // Rollback nếu lỗi
             }
         }
     }
 
     fun toggleSelection(bookId: String, isSelected: Boolean) {
+        // Cập nhật cục bộ ngay lập tức để UI thay đổi ngay
+        _uiState.update { state ->
+            state.copy(
+                cartItems = state.cartItems.map { 
+                    if (it.bookId == bookId) it.copy(isSelected = isSelected) else it 
+                }
+            )
+        }
+
         viewModelScope.launch {
             val result = repository.toggleSelection(bookId, isSelected)
-            if (result.isSuccess) {
+            if (!result.isSuccess) {
+                // Nếu lưu database thất bại, tải lại để đồng bộ đúng dữ liệu thực tế
                 loadCartItems()
             }
         }
     }
 
     fun toggleSelectAll(isSelected: Boolean) {
+        // Cập nhật cục bộ cho tất cả
+        _uiState.update { state ->
+            state.copy(
+                cartItems = state.cartItems.map { it.copy(isSelected = isSelected) }
+            )
+        }
+
         viewModelScope.launch {
+            // Trong thực tế nên dùng batch update ở repository
             _uiState.value.cartItems.forEach { 
                 repository.toggleSelection(it.bookId, isSelected)
             }
-            loadCartItems()
         }
     }
 

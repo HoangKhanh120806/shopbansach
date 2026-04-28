@@ -9,9 +9,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.User
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.BookDetailViewModel
 import com.example.shopbansach.viewmodel.CartActionState
@@ -51,32 +55,12 @@ fun BookDetailScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
+    // State cho việc chọn số lượng
+    var showQuantitySheet by remember { mutableStateOf(false) }
+    var selectedQuantity by remember { mutableIntStateOf(1) }
+
     LaunchedEffect(bookId) {
         viewModel.getBookDetail(bookId)
-    }
-
-    // Biến để theo dõi nếu người dùng nhấn "Mua ngay"
-    var isNavigatingToCheckout by remember { mutableStateOf(false) }
-
-    // Xử lý thông báo và điều hướng khi thêm vào giỏ hàng
-    LaunchedEffect(cartUiState.actionState) {
-        when (cartUiState.actionState) {
-            is CartActionState.Success -> {
-                if (isNavigatingToCheckout) {
-                    navController.navigate(Screen.Checkout.route)
-                    isNavigatingToCheckout = false
-                } else {
-                    Toast.makeText(context, "Đã thêm vào giỏ hàng!", Toast.LENGTH_SHORT).show()
-                }
-                cartViewModel.resetActionState()
-            }
-            is CartActionState.Error -> {
-                Toast.makeText(context, (cartUiState.actionState as CartActionState.Error).message, Toast.LENGTH_SHORT).show()
-                cartViewModel.resetActionState()
-                isNavigatingToCheckout = false
-            }
-            else -> {}
-        }
     }
 
     Scaffold(
@@ -108,12 +92,10 @@ fun BookDetailScreen(
                     book = uiState.book!!,
                     isAdding = cartUiState.actionState is CartActionState.Loading,
                     onAddToCart = { 
-                        isNavigatingToCheckout = false
                         cartViewModel.addToCart(uiState.book!!) 
                     },
                     onBuyNow = {
-                        isNavigatingToCheckout = true
-                        cartViewModel.addToCart(uiState.book!!)
+                        showQuantitySheet = true
                     }
                 )
             }
@@ -173,6 +155,15 @@ fun BookDetailScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
+                        // THÔNG TIN NGƯỜI BÁN (SHOP)
+                        SellerInfoSection(uiState.seller) {
+                            uiState.seller?.id?.let { id ->
+                                navController.navigate(Screen.SellerShop.createRoute(id))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -226,6 +217,154 @@ fun BookDetailScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Modal Bottom Sheet để chọn số lượng
+    if (showQuantitySheet && uiState.book != null) {
+        val book = uiState.book!!
+        ModalBottomSheet(
+            onDismissRequest = { showQuantitySheet = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            QuantitySelectionContent(
+                book = book,
+                quantity = selectedQuantity,
+                onQuantityChange = { selectedQuantity = it },
+                onConfirm = {
+                    showQuantitySheet = false
+                    navController.navigate(Screen.Checkout.createRoute(bookId = book.id, quantity = selectedQuantity))
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun SellerInfoSection(seller: User?, onVisitShop: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onVisitShop() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Storefront,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column {
+                Text(
+                    text = seller?.shopName ?: seller?.name ?: "Người bán ẩn danh",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "Đang hoạt động",
+                    color = Color(0xFF4CAF50),
+                    fontSize = 12.sp
+                )
+            }
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            TextButton(onClick = onVisitShop) {
+                Text("Xem Shop", fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun QuantitySelectionContent(
+    book: Book,
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit,
+    onConfirm: () -> Unit
+) {
+    // ... nội dung không đổi
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .navigationBarsPadding()
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = book.imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(book.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = String.format(Locale.US, "%,dđ", book.price),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text("Kho: ${book.stock}", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Số lượng", fontWeight = FontWeight.Medium)
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
+                    enabled = quantity > 1
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Giảm")
+                }
+                
+                Text(
+                    text = "$quantity",
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                
+                IconButton(
+                    onClick = { if (quantity < book.stock) onQuantityChange(quantity + 1) },
+                    enabled = quantity < book.stock
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Tăng")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = onConfirm,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("XÁC NHẬN", fontWeight = FontWeight.Bold)
         }
     }
 }

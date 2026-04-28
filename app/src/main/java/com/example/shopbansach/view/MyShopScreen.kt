@@ -38,10 +38,48 @@ fun MyShopScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var bookToDelete by remember { mutableStateOf<Book?>(null) }
+    
+    // State cho Dialog đổi tên Shop
+    var showEditShopNameDialog by remember { mutableStateOf(false) }
+    var newShopName by remember { mutableStateOf("") }
 
-    // Tự động làm mới danh sách mỗi khi màn hình này được hiển thị (ví dụ khi quay lại từ trang Thêm/Sửa)
+    LaunchedEffect(uiState.currentUser) {
+        newShopName = uiState.currentUser?.shopName ?: uiState.currentUser?.name ?: "Shop của tôi"
+    }
+
     LaunchedEffect(Unit) {
-        viewModel.loadMyShopBooks()
+        viewModel.loadData()
+    }
+
+    if (showEditShopNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditShopNameDialog = false },
+            title = { Text("Đổi tên Shop") },
+            text = {
+                OutlinedTextField(
+                    value = newShopName,
+                    onValueChange = { newShopName = it },
+                    label = { Text("Tên shop mới") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.updateShopName(newShopName)
+                        showEditShopNameDialog = false
+                    }
+                ) {
+                    Text("Lưu thay đổi")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditShopNameDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
     }
 
     if (bookToDelete != null) {
@@ -84,8 +122,8 @@ fun MyShopScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Mở menu cài đặt shop */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More")
+                    IconButton(onClick = { showEditShopNameDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Shop")
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -117,10 +155,12 @@ fun MyShopScreen(
                 contentPadding = PaddingValues(24.dp)
             ) {
                 item {
-                    ShopHeaderSection()
+                    ShopHeaderSection(
+                        shopName = uiState.currentUser?.shopName ?: uiState.currentUser?.name ?: "Shop của tôi",
+                        onEditClick = { showEditShopNameDialog = true }
+                    )
                     Spacer(modifier = Modifier.height(24.dp))
                     
-                    // Dashboard stats
                     ShopStatsSection(uiState.totalRevenue, uiState.totalSold)
                     
                     Spacer(modifier = Modifier.height(32.dp))
@@ -159,9 +199,9 @@ fun MyShopScreen(
 }
 
 @Composable
-fun ShopHeaderSection() {
+fun ShopHeaderSection(shopName: String, onEditClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onEditClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(24.dp)
     ) {
@@ -186,15 +226,15 @@ fun ShopHeaderSection() {
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
-                    text = "Cozy Bookstore",
+                    text = shopName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Đang hoạt động",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4CAF50)
+                    text = "Chạm để đổi tên shop",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                 )
             }
         }

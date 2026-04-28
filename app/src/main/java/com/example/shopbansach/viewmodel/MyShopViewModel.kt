@@ -3,6 +3,8 @@ package com.example.shopbansach.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.User
+import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,20 +15,37 @@ import kotlinx.coroutines.launch
 
 data class MyShopUiState(
     val myBooks: List<Book> = emptyList(),
+    val currentUser: User? = null,
     val totalRevenue: Long = 0,
     val totalSold: Int = 0,
     val isLoading: Boolean = false,
+    val isUpdatingName: Boolean = false,
     val errorMessage: String? = null
 )
 
-class MyShopViewModel(private val repository: FirebaseBookRepository = FirebaseBookRepository()) : ViewModel() {
+class MyShopViewModel(
+    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository(),
+    private val authRepository: AuthRepository = AuthRepository()
+) : ViewModel() {
     private val _uiState = MutableStateFlow(MyShopUiState())
     val uiState: StateFlow<MyShopUiState> = _uiState.asStateFlow()
     
     private val auth = FirebaseAuth.getInstance()
 
     init {
+        loadData()
+    }
+
+    fun loadData() {
         loadMyShopBooks()
+        loadUserData()
+    }
+
+    private fun loadUserData() {
+        viewModelScope.launch {
+            val user = authRepository.getCurrentUserData()
+            _uiState.update { it.copy(currentUser = user) }
+        }
     }
 
     fun loadMyShopBooks() {
@@ -34,12 +53,11 @@ class MyShopViewModel(private val repository: FirebaseBookRepository = FirebaseB
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val books = repository.getBooksByOwner(userId)
+                val books = bookRepository.getBooksByOwner(userId)
                 
-                // Giả định doanh thu và số lượng bán (Trong thực tế cần bảng Orders)
-                // Ở đây ta tạm tính tổng giá trị hàng đang bán hoặc giả lập số liệu
-                val revenue = books.sumOf { it.price * (it.stock / 2) } // Giả lập: bán được một nửa
-                val sold = books.sumOf { it.stock / 3 } // Giả lập: bán được 1/3
+                // Giả định doanh thu và số lượng bán
+                val revenue = books.sumOf { it.price * (it.stock / 2) } 
+                val sold = books.sumOf { it.stock / 3 } 
                 
                 _uiState.update { it.copy(
                     myBooks = books, 
@@ -53,9 +71,21 @@ class MyShopViewModel(private val repository: FirebaseBookRepository = FirebaseB
         }
     }
 
+    fun updateShopName(newName: String) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isUpdatingName = true) }
+            val result = authRepository.updateShopName(userId, newName)
+            if (result.isSuccess) {
+                loadUserData()
+            }
+            _uiState.update { it.copy(isUpdatingName = false) }
+        }
+    }
+
     fun deleteBook(bookId: String) {
         viewModelScope.launch {
-            val result = repository.deleteBook(bookId)
+            val result = bookRepository.deleteBook(bookId)
             if (result.isSuccess) {
                 loadMyShopBooks()
             }

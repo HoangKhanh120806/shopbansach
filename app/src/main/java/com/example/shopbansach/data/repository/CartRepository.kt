@@ -27,7 +27,9 @@ class CartRepository {
                         transaction.update(docRef, "isSelected", true)
                     }
                 } else {
-                    transaction.set(docRef, cartItem)
+                    // Nếu forceSelected là true, đảm bảo item mới tạo cũng được chọn
+                    val itemToSet = if (forceSelected) cartItem.copy(isSelected = true) else cartItem
+                    transaction.set(docRef, itemToSet)
                 }
             }.await()
 
