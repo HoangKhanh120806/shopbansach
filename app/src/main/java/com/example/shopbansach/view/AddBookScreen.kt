@@ -52,8 +52,13 @@ fun AddBookScreen(navController: NavController) {
     var author by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var pages by remember { mutableStateOf("") }
+    var stock by remember { mutableStateOf("") }
     var synopsis by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Văn học") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    var expanded by remember { mutableStateOf(false) }
+    val categories = listOf("Văn học", "Kinh tế", "Tâm lý", "Kỹ năng sống", "Thiếu nhi", "Ngoại ngữ", "Khác")
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -80,7 +85,7 @@ fun AddBookScreen(navController: NavController) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Thêm sách mới", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+                title = { Text("Đăng bán sách mới", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -144,7 +149,42 @@ fun AddBookScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
+            
             Spacer(modifier = Modifier.height(12.dp))
+            
+            // Category Dropdown
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = category,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Thể loại") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    categories.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(selectionOption) },
+                            onClick = {
+                                category = selectionOption
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            
             OutlinedTextField(
                 value = author,
                 onValueChange = { author = it },
@@ -152,16 +192,21 @@ fun AddBookScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
+            
             Spacer(modifier = Modifier.height(12.dp))
+            
+            OutlinedTextField(
+                value = price,
+                onValueChange = { price = it },
+                label = { Text("Giá (VNĐ)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(12.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
-                    label = { Text("Giá (VNĐ)") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp)
-                )
                 OutlinedTextField(
                     value = pages,
                     onValueChange = { pages = it },
@@ -170,8 +215,18 @@ fun AddBookScreen(navController: NavController) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(12.dp)
                 )
+                OutlinedTextField(
+                    value = stock,
+                    onValueChange = { stock = it },
+                    label = { Text("Số lượng tồn kho") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp)
+                )
             }
+            
             Spacer(modifier = Modifier.height(12.dp))
+            
             OutlinedTextField(
                 value = synopsis,
                 onValueChange = { synopsis = it },
@@ -185,7 +240,7 @@ fun AddBookScreen(navController: NavController) {
             // Nút đăng bán
             Button(
                 onClick = {
-                    viewModel.addBook(title, author, price, pages, synopsis, selectedImageUri)
+                    viewModel.addBook(title, author, price, pages, synopsis, category, stock, selectedImageUri)
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
@@ -196,7 +251,7 @@ fun AddBookScreen(navController: NavController) {
                 } else {
                     Icon(Icons.Default.CloudUpload, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Đăng bán sách", fontSize = 16.sp)
+                    Text("Đăng bán sách ngay", fontSize = 16.sp)
                 }
             }
             

@@ -36,10 +36,12 @@ class BookViewModel(
         price: String,
         pages: String,
         synopsis: String,
+        category: String,
+        stock: String,
         imageUri: Uri?
     ) {
         if (title.isEmpty() || price.isEmpty() || imageUri == null) {
-            _actionState.value = BookActionState.Error("Vui lòng nhập đầy đủ và chọn ảnh")
+            _actionState.value = BookActionState.Error("Vui lòng nhập đầy đủ thông tin bắt buộc và chọn ảnh")
             return
         }
 
@@ -61,7 +63,10 @@ class BookViewModel(
                         pages = pages.toIntOrNull() ?: 0,
                         synopsis = synopsis,
                         imageUrl = imageUrl,
-                        ownerId = auth.currentUser?.uid ?: ""
+                        ownerId = auth.currentUser?.uid ?: "",
+                        category = category.ifEmpty { "Khác" },
+                        stock = stock.toIntOrNull() ?: 0,
+                        rating = 0.0 // Mặc định 0 sao cho sách mới
                     )
                     
                     bookRepository.addBook(newBook)
