@@ -19,7 +19,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.ui.auth.AuthButton
-import com.example.shopbansach.ui.auth.AuthColors
 import com.example.shopbansach.ui.auth.AuthTextField
 import com.example.shopbansach.viewmodel.AuthState
 import com.example.shopbansach.viewmodel.AuthViewModel
@@ -37,15 +36,26 @@ fun LoginScreen(
 
     // Xử lý logic đăng nhập thành công hoặc lỗi
     LaunchedEffect(authState) {
-        if (authState is AuthState.Success) {
-            Toast.makeText(context, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show()
-            navController.navigate(Screen.Home.route) {
-                popUpTo(Screen.Login.route) { inclusive = true }
+        when (authState) {
+            is AuthState.Success -> {
+                Toast.makeText(context, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show()
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Login.route) { inclusive = true }
+                }
+                viewModel.resetState()
             }
-            viewModel.resetState()
-        } else if (authState is AuthState.Error) {
-            Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_LONG).show()
-            viewModel.resetState()
+            is AuthState.AdminSuccess -> {
+                Toast.makeText(context, "Chào mừng Admin!", Toast.LENGTH_SHORT).show()
+                navController.navigate(Screen.AdminHome.route) {
+                    popUpTo(Screen.Login.route) { inclusive = true }
+                }
+                viewModel.resetState()
+            }
+            is AuthState.Error -> {
+                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_LONG).show()
+                viewModel.resetState()
+            }
+            else -> {}
         }
     }
 
@@ -98,7 +108,7 @@ fun LoginScreen(
         AuthTextField(
             value = password,
             hint = "Mật khẩu",
-            isPassword = true, // Kích hoạt tính năng ẩn mật khẩu và con mắt
+            isPassword = true,
             onValueChange = { password = it }
         )
 

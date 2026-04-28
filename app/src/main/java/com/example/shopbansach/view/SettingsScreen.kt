@@ -40,7 +40,7 @@ fun SettingsScreen(navController: NavController) {
                             val result = repository.deleteAccount()
                             if (result.isSuccess) {
                                 Toast.makeText(context, "Đã xóa tài khoản thành công", Toast.LENGTH_SHORT).show()
-                                navController.navigate(Screen.Home.route) {
+                                navController.navigate(Screen.Login.route) {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {

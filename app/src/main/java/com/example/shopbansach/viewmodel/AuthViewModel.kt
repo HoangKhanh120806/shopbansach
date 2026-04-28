@@ -2,6 +2,7 @@ package com.example.shopbansach.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
@@ -14,6 +15,7 @@ sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
     object Success : AuthState()
+    object AdminSuccess : AuthState() // Thêm trạng thái đăng nhập admin thành công
     data class Error(val message: String) : AuthState()
 }
 
@@ -57,7 +59,13 @@ class AuthViewModel : ViewModel() {
             _authState.value = AuthState.Loading
             val result = repository.loginUser(email, password)
             if (result.isSuccess) {
-                _authState.value = AuthState.Success
+                // Sau khi đăng nhập Auth thành công, kiểm tra Role trong Firestore
+                val user = repository.getCurrentUserData()
+                if (user?.role == UserRole.ADMIN) {
+                    _authState.value = AuthState.AdminSuccess
+                } else {
+                    _authState.value = AuthState.Success
+                }
             } else {
                 _authState.value = AuthState.Error("Email hoặc mật khẩu không chính xác")
             }

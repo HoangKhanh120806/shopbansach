@@ -43,7 +43,7 @@ fun ProfileScreen(
     var user by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     
-    val currentUser = remember { FirebaseAuth.getInstance().currentUser }
+    val currentUser = FirebaseAuth.getInstance().currentUser
     val isLoggedIn = currentUser != null
 
     // Lấy dữ liệu user thật từ Firestore khi màn hình được hiển thị
@@ -195,7 +195,7 @@ fun ProfileScreen(
                                 titleColor = Color.Red,
                                 onClick = {
                                     authRepository.logout()
-                                    navController.navigate(Screen.Home.route) {
+                                    navController.navigate(Screen.Login.route) {
                                         popUpTo(0) { inclusive = true }
                                     }
                                 }
