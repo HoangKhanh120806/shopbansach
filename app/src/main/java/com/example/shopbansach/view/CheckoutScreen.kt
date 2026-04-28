@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,9 +15,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -25,6 +31,7 @@ import com.example.shopbansach.ui.auth.AuthColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutScreen(navController: NavController) {
+    val focusManager = LocalFocusManager.current
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var addressDetail by remember { mutableStateOf("") }
@@ -101,13 +108,38 @@ fun CheckoutScreen(navController: NavController) {
                 color = AuthColors.Primary
             )
             Spacer(modifier = Modifier.height(12.dp))
-            CheckoutTextField(value = fullName, onValueChange = { fullName = it }, placeholder = "Họ và tên")
+            CheckoutTextField(
+                value = fullName, 
+                onValueChange = { fullName = it }, 
+                placeholder = "Họ và tên",
+                imeAction = ImeAction.Next,
+                onAction = { focusManager.moveFocus(FocusDirection.Down) }
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            CheckoutTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, placeholder = "Số điện thoại")
+            CheckoutTextField(
+                value = phoneNumber, 
+                onValueChange = { phoneNumber = it }, 
+                placeholder = "Số điện thoại",
+                keyboardType = KeyboardType.Phone,
+                imeAction = ImeAction.Next,
+                onAction = { focusManager.moveFocus(FocusDirection.Down) }
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            CheckoutTextField(value = addressDetail, onValueChange = { addressDetail = it }, placeholder = "Địa chỉ chi tiết")
+            CheckoutTextField(
+                value = addressDetail, 
+                onValueChange = { addressDetail = it }, 
+                placeholder = "Địa chỉ chi tiết",
+                imeAction = ImeAction.Next,
+                onAction = { focusManager.moveFocus(FocusDirection.Down) }
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            CheckoutTextField(value = city, onValueChange = { city = it }, placeholder = "Tỉnh/Thành phố")
+            CheckoutTextField(
+                value = city, 
+                onValueChange = { city = it }, 
+                placeholder = "Tỉnh/Thành phố",
+                imeAction = ImeAction.Done,
+                onAction = { focusManager.clearFocus() }
+            )
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -163,15 +195,12 @@ fun CheckoutScreen(navController: NavController) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             
-            SummaryRow("Sách: The Silent Patient", "- ₫250.000")
-            SummaryRow("Sách: Dune", "- ₫320.000")
+            SummaryRow("Tạm tính:", "570,000 VND")
+            SummaryRow("Phí vận chuyển:", "30,000 VND")
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
-            SummaryRow("Tạm tính:", "₫570.000")
-            SummaryRow("Phí vận chuyển:", "₫30.000")
-            Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Tổng cộng:", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("₫600.000", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = AuthColors.Primary)
+                Text("600,000 VND", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = AuthColors.Primary)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -180,7 +209,14 @@ fun CheckoutScreen(navController: NavController) {
 }
 
 @Composable
-fun CheckoutTextField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
+fun CheckoutTextField(
+    value: String, 
+    onValueChange: (String) -> Unit, 
+    placeholder: String,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Default,
+    onAction: () -> Unit = {}
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -191,7 +227,9 @@ fun CheckoutTextField(value: String, onValueChange: (String) -> Unit, placeholde
             unfocusedBorderColor = Color(0xFFD6BFA9).copy(alpha = 0.5f),
             focusedBorderColor = Color(0xFFD6BFA9)
         ),
-        singleLine = true
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = KeyboardActions(onAny = { onAction() })
     )
 }
 

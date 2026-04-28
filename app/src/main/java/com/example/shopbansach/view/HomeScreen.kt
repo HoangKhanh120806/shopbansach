@@ -32,6 +32,7 @@ import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.HomeViewModel
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -307,7 +308,7 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                 }
             }
             Text(
-                text = "${book.price}đ",
+                text = String.format(Locale.US, "%,d VND", book.price),
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.tertiary,
                 fontSize = 15.sp

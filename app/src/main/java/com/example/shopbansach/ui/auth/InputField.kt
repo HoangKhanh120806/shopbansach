@@ -2,6 +2,7 @@ package com.example.shopbansach.ui.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -10,7 +11,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -22,9 +25,11 @@ fun AuthTextField(
     value: String,
     hint: String,
     isPassword: Boolean = false,
+    imeAction: ImeAction = ImeAction.Next,
     onValueChange: (String) -> Unit
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     OutlinedTextField(
         value = value,
@@ -60,8 +65,12 @@ fun AuthTextField(
         },
         
         keyboardOptions = KeyboardOptions(
-            imeAction = ImeAction.Next,
+            imeAction = imeAction,
             autoCorrectEnabled = false
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+            onDone = { focusManager.clearFocus() }
         ),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
@@ -106,6 +115,8 @@ fun SearchTextField(
             unfocusedIndicatorColor = Color.Transparent,
         ),
         modifier = modifier,
-        singleLine = true
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { /* Handle Search */ })
     )
 }

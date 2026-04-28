@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,11 +21,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +44,7 @@ import com.example.shopbansach.viewmodel.factory.BookViewModelFactory
 @Composable
 fun AddBookScreen(navController: NavController) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     
     // Khởi tạo ViewModel với Factory vì cần truyền Context cho CloudinaryRepository
     val viewModel: BookViewModel = viewModel(
@@ -147,7 +152,9 @@ fun AddBookScreen(navController: NavController) {
                 onValueChange = { title = it },
                 label = { Text("Tên sách") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -177,6 +184,7 @@ fun AddBookScreen(navController: NavController) {
                             onClick = {
                                 category = selectionOption
                                 expanded = false
+                                focusManager.moveFocus(FocusDirection.Down)
                             }
                         )
                     }
@@ -190,7 +198,9 @@ fun AddBookScreen(navController: NavController) {
                 onValueChange = { author = it },
                 label = { Text("Tác giả") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -200,7 +210,8 @@ fun AddBookScreen(navController: NavController) {
                 onValueChange = { price = it },
                 label = { Text("Giá (VNĐ)") },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                 shape = RoundedCornerShape(12.dp)
             )
             
@@ -212,7 +223,8 @@ fun AddBookScreen(navController: NavController) {
                     onValueChange = { pages = it },
                     label = { Text("Số trang") },
                     modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Right) }),
                     shape = RoundedCornerShape(12.dp)
                 )
                 OutlinedTextField(
@@ -220,7 +232,8 @@ fun AddBookScreen(navController: NavController) {
                     onValueChange = { stock = it },
                     label = { Text("Số lượng tồn kho") },
                     modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                     shape = RoundedCornerShape(12.dp)
                 )
             }
@@ -232,7 +245,9 @@ fun AddBookScreen(navController: NavController) {
                 onValueChange = { synopsis = it },
                 label = { Text("Tóm tắt nội dung") },
                 modifier = Modifier.fillMaxWidth().height(120.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
             )
 
             Spacer(modifier = Modifier.height(32.dp))

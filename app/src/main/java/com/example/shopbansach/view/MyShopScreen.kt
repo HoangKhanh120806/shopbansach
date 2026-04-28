@@ -9,11 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +28,7 @@ import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.MyShopViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +38,11 @@ fun MyShopScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var bookToDelete by remember { mutableStateOf<Book?>(null) }
+
+    // Tự động làm mới danh sách mỗi khi màn hình này được hiển thị (ví dụ khi quay lại từ trang Thêm/Sửa)
+    LaunchedEffect(Unit) {
+        viewModel.loadMyShopBooks()
+    }
 
     if (bookToDelete != null) {
         AlertDialog(
@@ -116,6 +118,11 @@ fun MyShopScreen(
             ) {
                 item {
                     ShopHeaderSection()
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Dashboard stats
+                    ShopStatsSection(uiState.totalRevenue, uiState.totalSold)
+                    
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(
                         text = "Sách đang bán (${uiState.myBooks.size})",
@@ -195,6 +202,45 @@ fun ShopHeaderSection() {
 }
 
 @Composable
+fun ShopStatsSection(revenue: Long, sold: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Card(
+            modifier = Modifier.weight(1f),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Doanh thu", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(
+                    text = String.format(Locale.US, "%,d VND", revenue),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+        Card(
+            modifier = Modifier.weight(0.8f),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Đã bán", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                Text(
+                    text = "$sold cuốn",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun MyProductItem(book: Book, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -236,10 +282,15 @@ fun MyProductItem(book: Book, onEdit: () -> Unit, onDelete: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${book.price}đ",
+                    text = String.format(Locale.US, "%,d VND", book.price),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 14.sp
+                )
+                Text(
+                    text = "Kho: ${book.stock}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -258,7 +309,7 @@ fun MyProductItem(book: Book, onEdit: () -> Unit, onDelete: () -> Unit) {
                     )
                 }
                 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 IconButton(
                     onClick = onDelete,
