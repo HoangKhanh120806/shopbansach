@@ -1,5 +1,8 @@
 package com.example.shopbansach.view
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,22 +30,36 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.repository.CloudinaryRepository
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.MyShopViewModel
+import com.example.shopbansach.viewmodel.factory.MyShopViewModelFactory
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyShopScreen(
-    navController: NavController,
-    viewModel: MyShopViewModel = viewModel()
+    navController: NavController
 ) {
+    val context = LocalContext.current
+    // Sử dụng Factory để truyền CloudinaryRepository vào ViewModel
+    val viewModel: MyShopViewModel = viewModel(
+        factory = MyShopViewModelFactory(CloudinaryRepository(context))
+    )
+
     val uiState by viewModel.uiState.collectAsState()
     var bookToDelete by remember { mutableStateOf<Book?>(null) }
     
     // State cho Dialog đổi tên Shop
     var showEditShopNameDialog by remember { mutableStateOf(false) }
     var newShopName by remember { mutableStateOf("") }
+
+    // Launcher chọn ảnh đại diện cho Shop
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.updateShopAvatar(it) }
+    }
 
     LaunchedEffect(uiState.currentUser) {
         newShopName = uiState.currentUser?.shopName ?: uiState.currentUser?.name ?: "Shop của tôi"
@@ -157,7 +175,10 @@ fun MyShopScreen(
                 item {
                     ShopHeaderSection(
                         shopName = uiState.currentUser?.shopName ?: uiState.currentUser?.name ?: "Shop của tôi",
-                        onEditClick = { showEditShopNameDialog = true }
+                        shopAvatarUrl = uiState.currentUser?.shopAvatarUrl,
+                        onEditClick = { showEditShopNameDialog = true },
+                        onChangeAvatarClick = { photoPickerLauncher.launch("image/*") },
+                        isUpdating = uiState.isUpdating
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     
@@ -199,9 +220,15 @@ fun MyShopScreen(
 }
 
 @Composable
-fun ShopHeaderSection(shopName: String, onEditClick: () -> Unit) {
+fun ShopHeaderSection(
+    shopName: String, 
+    shopAvatarUrl: String?, 
+    onEditClick: () -> Unit,
+    onChangeAvatarClick: () -> Unit,
+    isUpdating: Boolean
+) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onEditClick() },
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(24.dp)
     ) {
@@ -211,25 +238,59 @@ fun ShopHeaderSection(shopName: String, onEditClick: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(80.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    .clickable { onChangeAvatarClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Storefront,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                if (!shopAvatarUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = shopAvatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Storefront,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                if (isUpdating) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(24.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                    }
+                }
             }
+            
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            
+            Column(modifier = Modifier.weight(1f).clickable { onEditClick() }) {
                 Text(
                     text = shopName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "Chạm để đổi tên shop",

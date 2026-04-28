@@ -75,10 +75,11 @@ fun SellerShopScreen(
                 // Header Shop
                 SellerHeaderSection(
                     name = uiState.seller?.shopName ?: uiState.seller?.name ?: "Shop người bán",
+                    avatarUrl = uiState.seller?.shopAvatarUrl,
                     memberSince = uiState.seller?.memberSince ?: "2024"
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
 
                 Text(
                     text = "Tất cả sản phẩm (${uiState.sellerBooks.size})",
@@ -106,7 +107,7 @@ fun SellerShopScreen(
 }
 
 @Composable
-fun SellerHeaderSection(name: String, memberSince: String) {
+fun SellerHeaderSection(name: String, avatarUrl: String?, memberSince: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -120,12 +121,21 @@ fun SellerHeaderSection(name: String, memberSince: String) {
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                Icons.Default.Storefront,
-                contentDescription = null,
-                modifier = Modifier.size(30.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            if (!avatarUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Shop Avatar",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    Icons.Default.Storefront,
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         
         Spacer(modifier = Modifier.width(16.dp))

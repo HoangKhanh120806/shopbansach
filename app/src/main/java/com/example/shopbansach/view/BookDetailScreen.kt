@@ -258,12 +258,21 @@ fun SellerInfoSection(seller: User?, onVisitShop: () -> Unit) {
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Storefront,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                if (!seller?.shopAvatarUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = seller?.shopAvatarUrl,
+                        contentDescription = "Shop Avatar",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Storefront,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.width(12.dp))
@@ -297,7 +306,6 @@ fun QuantitySelectionContent(
     onQuantityChange: (Int) -> Unit,
     onConfirm: () -> Unit
 ) {
-    // ... nội dung không đổi
     Column(
         modifier = Modifier
             .fillMaxWidth()

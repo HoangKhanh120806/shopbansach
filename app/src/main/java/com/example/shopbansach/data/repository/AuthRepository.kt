@@ -35,12 +35,10 @@ class AuthRepository {
 
             Result.success(Unit)
         } catch (e: Exception) {
-            // Nếu lưu Firestore thất bại, hãy xóa tài khoản Auth vừa tạo để tránh rác dữ liệu
             if (userId != null) {
                 try {
                     auth.currentUser?.delete()?.await()
                 } catch (deleteError: Exception) {
-                    // Log error or ignore
                 }
             }
             Result.failure(e)
@@ -105,9 +103,31 @@ class AuthRepository {
         }
     }
 
+    suspend fun updateShopAvatarUrl(userId: String, shopAvatarUrl: String): Result<Unit> {
+        return try {
+            firestore.collection("users").document(userId)
+                .update("shopAvatarUrl", shopAvatarUrl)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun uploadAvatar(userId: String, imageUri: Uri): Result<String> {
         return try {
             val ref = storage.reference.child("avatars/$userId.jpg")
+            ref.putFile(imageUri).await()
+            val url = ref.downloadUrl.await().toString()
+            Result.success(url)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadShopAvatar(userId: String, imageUri: Uri): Result<String> {
+        return try {
+            val ref = storage.reference.child("shop_avatars/$userId.jpg")
             ref.putFile(imageUri).await()
             val url = ref.downloadUrl.await().toString()
             Result.success(url)
@@ -147,9 +167,7 @@ class AuthRepository {
         }
     }
 
-    // Chức năng dành cho Admin
     suspend fun getAllUsers(): List<User> {
-        // Không dùng try-catch ở đây để ViewModel có thể bắt được lỗi chính xác (như lỗi quyền truy cập Firestore)
         val snapshot = firestore.collection("users").get().await()
         return snapshot.toObjects(User::class.java)
     }
