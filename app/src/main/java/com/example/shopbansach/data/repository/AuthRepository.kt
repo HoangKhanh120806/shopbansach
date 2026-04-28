@@ -15,9 +15,10 @@ class AuthRepository {
     private val storage = FirebaseStorage.getInstance()
 
     suspend fun registerUser(name: String, email: String, password: String): Result<Unit> {
+        var userId: String? = null
         return try {
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
-            val userId = authResult.user?.uid ?: throw Exception("User creation failed")
+            userId = authResult.user?.uid ?: throw Exception("User creation failed")
 
             val user = User(
                 id = userId,
@@ -34,6 +35,14 @@ class AuthRepository {
 
             Result.success(Unit)
         } catch (e: Exception) {
+            // Nếu lưu Firestore thất bại, hãy xóa tài khoản Auth vừa tạo để tránh rác dữ liệu
+            if (userId != null) {
+                try {
+                    auth.currentUser?.delete()?.await()
+                } catch (deleteError: Exception) {
+                    // Log error or ignore
+                }
+            }
             Result.failure(e)
         }
     }
@@ -51,6 +60,7 @@ class AuthRepository {
         val firebaseUser = auth.currentUser ?: return null
         return try {
             val snapshot = firestore.collection("users").document(firebaseUser.uid).get().await()
+            if (!snapshot.exists()) return null
             snapshot.toObject(User::class.java)
         } catch (e: Exception) {
             null

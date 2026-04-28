@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +23,8 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+    
+    private var searchJob: Job? = null
 
     init {
         loadSuggestions()
@@ -36,18 +40,22 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
 
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
+        
+        searchJob?.cancel() // Hủy bỏ công việc tìm kiếm trước đó nếu có
+        
         if (query.isEmpty()) {
-            _uiState.update { it.copy(searchResults = emptyList()) }
+            _uiState.update { it.copy(searchResults = emptyList(), isLoading = false) }
         } else {
-            searchBooks(query)
+            searchJob = viewModelScope.launch {
+                delay(500) // Chờ 500ms trước khi thực hiện tìm kiếm (Debounce)
+                searchBooks(query)
+            }
         }
     }
 
-    private fun searchBooks(query: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val results = repository.searchBooks(query)
-            _uiState.update { it.copy(searchResults = results, isLoading = false) }
-        }
+    private suspend fun searchBooks(query: String) {
+        _uiState.update { it.copy(isLoading = true) }
+        val results = repository.searchBooks(query)
+        _uiState.update { it.copy(searchResults = results, isLoading = false) }
     }
 }

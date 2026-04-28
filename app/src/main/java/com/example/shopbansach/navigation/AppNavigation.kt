@@ -36,13 +36,20 @@ fun AppNavigation(
             // Nếu đã đăng nhập, kiểm tra role để quyết định vào Home hay AdminHome
             try {
                 val userData = authRepository.getCurrentUserData()
-                startDestination = if (userData?.role == UserRole.ADMIN) {
-                    Screen.AdminHome.route
+                if (userData != null) {
+                    startDestination = if (userData.role == UserRole.ADMIN) {
+                        Screen.AdminHome.route
+                    } else {
+                        Screen.Home.route
+                    }
                 } else {
-                    Screen.Home.route
+                    // Nếu không tìm thấy data user trong Firestore mặc dù đã login Auth
+                    authRepository.logout()
+                    startDestination = Screen.Login.route
                 }
             } catch (e: Exception) {
-                // Nếu lỗi khi lấy data user, cho ra màn hình login hoặc home mặc định
+                // Nếu lỗi khi lấy data user, đăng xuất để tránh kẹt trạng thái
+                authRepository.logout()
                 startDestination = Screen.Login.route
             }
         }

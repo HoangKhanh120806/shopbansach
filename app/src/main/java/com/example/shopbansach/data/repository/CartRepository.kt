@@ -2,6 +2,7 @@ package com.example.shopbansach.data.repository
 
 import com.example.shopbansach.data.model.CartItem
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -16,19 +17,20 @@ class CartRepository {
     suspend fun addToCart(cartItem: CartItem): Result<Unit> {
         return try {
             val collection = getCartCollection() ?: throw Exception("User not logged in")
-            
-            // Kiểm tra xem sách đã có trong giỏ hàng chưa
             val docRef = collection.document(cartItem.bookId)
-            val snapshot = docRef.get().await()
             
-            if (snapshot.exists()) {
-                // Nếu có rồi thì tăng số lượng
-                val currentQty = snapshot.getLong("quantity") ?: 1
-                docRef.update("quantity", currentQty + cartItem.quantity).await()
-            } else {
-                // Nếu chưa có thì thêm mới
-                docRef.set(cartItem).await()
-            }
+            // Sử dụng transaction hoặc kiểm tra existence để đảm bảo tính nguyên tử
+            firestore.runTransaction { transaction ->
+                val snapshot = transaction.get(docRef)
+                if (snapshot.exists()) {
+                    // Nếu đã có, chỉ tăng số lượng
+                    transaction.update(docRef, "quantity", FieldValue.increment(cartItem.quantity.toLong()))
+                } else {
+                    // Nếu chưa có, thêm mới cả object
+                    transaction.set(docRef, cartItem)
+                }
+            }.await()
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

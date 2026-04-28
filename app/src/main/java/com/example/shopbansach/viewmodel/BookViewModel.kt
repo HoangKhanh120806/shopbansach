@@ -32,7 +32,7 @@ class BookViewModel(
     private val auth = FirebaseAuth.getInstance()
 
     fun saveBook(
-        bookId: String? = null, // Nếu null là thêm mới, có giá trị là chỉnh sửa
+        bookId: String? = null,
         title: String,
         author: String,
         price: String,
@@ -44,8 +44,13 @@ class BookViewModel(
         existingImageUrl: String? = null,
         rating: Double = 0.0
     ) {
-        if (title.isEmpty() || price.isEmpty() || (imageUri == null && existingImageUrl == null)) {
-            _actionState.value = BookActionState.Error("Vui lòng nhập đầy đủ thông tin và chọn ảnh")
+        // Làm sạch dữ liệu số (loại bỏ dấu chấm, phẩy, khoảng trắng)
+        val cleanPrice = price.replace(Regex("[^0-9]"), "")
+        val cleanPages = pages.replace(Regex("[^0-9]"), "")
+        val cleanStock = stock.replace(Regex("[^0-9]"), "")
+
+        if (title.isEmpty() || cleanPrice.isEmpty() || (imageUri == null && existingImageUrl == null)) {
+            _actionState.value = BookActionState.Error("Vui lòng nhập đầy đủ thông tin (Tên, Giá) và chọn ảnh")
             return
         }
 
@@ -54,7 +59,6 @@ class BookViewModel(
             try {
                 var finalImageUrl = existingImageUrl
 
-                // Nếu chọn ảnh mới, upload lên Cloudinary
                 if (imageUri != null) {
                     val uploadResult = cloudinaryRepository.uploadImage(imageUri)
                     if (uploadResult.isSuccess) {
@@ -71,13 +75,13 @@ class BookViewModel(
                     title = title,
                     titleLowercase = title.lowercase(Locale.ROOT),
                     author = author,
-                    price = price.toLongOrNull() ?: 0L,
-                    pages = pages.toIntOrNull() ?: 0,
+                    price = cleanPrice.toLongOrNull() ?: 0L,
+                    pages = cleanPages.toIntOrNull() ?: 0,
                     synopsis = synopsis,
                     imageUrl = finalImageUrl,
                     ownerId = auth.currentUser?.uid ?: "",
                     category = category.ifEmpty { "Khác" },
-                    stock = stock.toIntOrNull() ?: 0,
+                    stock = cleanStock.toIntOrNull() ?: 0,
                     rating = rating
                 )
                 
