@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -12,8 +13,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -34,6 +37,7 @@ fun AddEditAddressScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val repository = remember { AddressRepository() }
 
     var fullName by remember { mutableStateOf("") }
@@ -41,6 +45,17 @@ fun AddEditAddressScreen(
     var addressDetail by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var isDefault by remember { mutableStateOf(false) }
+
+    val handleSave = {
+        viewModel.saveAddress(
+            id = if (addressId == "new") null else addressId,
+            fullName = fullName,
+            phoneNumber = phoneNumber,
+            addressDetail = addressDetail,
+            city = city,
+            isDefault = isDefault
+        )
+    }
 
     LaunchedEffect(addressId) {
         if (addressId != "new") {
@@ -106,7 +121,8 @@ fun AddEditAddressScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -118,7 +134,8 @@ fun AddEditAddressScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -129,7 +146,9 @@ fun AddEditAddressScreen(
                 label = { Text("Địa chỉ chi tiết (Số nhà, tên đường)") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -141,7 +160,11 @@ fun AddEditAddressScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { 
+                    focusManager.clearFocus()
+                    handleSave()
+                })
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -161,16 +184,7 @@ fun AddEditAddressScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = {
-                    viewModel.saveAddress(
-                        id = if (addressId == "new") null else addressId,
-                        fullName = fullName,
-                        phoneNumber = phoneNumber,
-                        addressDetail = addressDetail,
-                        city = city,
-                        isDefault = isDefault
-                    )
-                },
+                onClick = handleSave,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

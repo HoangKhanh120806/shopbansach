@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -82,6 +83,7 @@ fun RegisterScreen(
         AuthTextField(
             value = name,
             hint = "Họ và tên",
+            imeAction = ImeAction.Next,
             onValueChange = { name = it }
         )
 
@@ -90,6 +92,7 @@ fun RegisterScreen(
         AuthTextField(
             value = email,
             hint = "Email",
+            imeAction = ImeAction.Next,
             onValueChange = { email = it }
         )
 
@@ -98,7 +101,9 @@ fun RegisterScreen(
         AuthTextField(
             value = password,
             hint = "Mật khẩu",
-            isPassword = true, // Ẩn mật khẩu
+            isPassword = true,
+            imeAction = ImeAction.Done,
+            onDone = { viewModel.register(name, email, password) },
             onValueChange = { password = it }
         )
 

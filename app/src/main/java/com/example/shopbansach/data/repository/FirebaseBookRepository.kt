@@ -1,6 +1,7 @@
 package com.example.shopbansach.data.repository
 
 import com.example.shopbansach.data.model.Book
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
@@ -113,6 +114,18 @@ class FirebaseBookRepository {
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
             booksCollection.document(book.id).set(book).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Cập nhật số lượng tồn kho khi mua hàng
+    suspend fun updateStock(bookId: String, quantityPurchased: Int): Result<Unit> {
+        return try {
+            booksCollection.document(bookId)
+                .update("stock", FieldValue.increment(-quantityPurchased.toLong()))
+                .await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.CartItem
 import com.example.shopbansach.data.repository.CartRepository
+import com.example.shopbansach.data.repository.FirebaseBookRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +26,10 @@ data class CartUiState(
     val errorMessage: String? = null
 )
 
-class CartViewModel(private val repository: CartRepository = CartRepository()) : ViewModel() {
+class CartViewModel(
+    private val repository: CartRepository = CartRepository(),
+    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CartUiState())
     val uiState: StateFlow<CartUiState> = _uiState.asStateFlow()
@@ -114,9 +118,10 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
         }
 
         viewModelScope.launch {
-            // Trong thực tế nên dùng batch update ở repository
-            _uiState.value.cartItems.forEach { 
-                repository.toggleSelection(it.bookId, isSelected)
+            // Sử dụng batch update mới để tối ưu performance
+            val result = repository.toggleAllSelection(isSelected)
+            if (!result.isSuccess) {
+                loadCartItems()
             }
         }
     }
@@ -146,6 +151,32 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
             if (result.isSuccess) {
                 loadCartItems()
                 onComplete()
+            }
+        }
+    }
+
+    /**
+     * Xử lý thanh toán: Trừ tồn kho và xóa giỏ hàng (nếu không phải mua ngay)
+     */
+    fun processCheckout(checkoutItems: List<CartItem>, isBuyNow: Boolean, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                // 1. Cập nhật tồn kho cho từng sản phẩm
+                checkoutItems.forEach { item ->
+                    bookRepository.updateStock(item.bookId, item.quantity)
+                }
+
+                // 2. Nếu thanh toán từ giỏ hàng, xóa các mục đã chọn
+                if (!isBuyNow) {
+                    repository.clearSelectedItems()
+                    loadCartItems()
+                }
+
+                _uiState.update { it.copy(isLoading = false) }
+                onComplete()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
         }
     }

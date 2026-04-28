@@ -16,6 +16,7 @@ sealed class AuthState {
     object Loading : AuthState()
     object Success : AuthState()
     object AdminSuccess : AuthState() // Thêm trạng thái đăng nhập admin thành công
+    object PasswordResetSent : AuthState() // Trạng thái đã gửi email reset mật khẩu
     data class Error(val message: String) : AuthState()
 }
 
@@ -68,6 +69,23 @@ class AuthViewModel : ViewModel() {
                 }
             } else {
                 _authState.value = AuthState.Error("Email hoặc mật khẩu không chính xác")
+            }
+        }
+    }
+
+    fun forgotPassword(email: String) {
+        if (email.isEmpty()) {
+            _authState.value = AuthState.Error("Vui lòng nhập email")
+            return
+        }
+
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = repository.sendPasswordResetEmail(email)
+            if (result.isSuccess) {
+                _authState.value = AuthState.PasswordResetSent
+            } else {
+                _authState.value = AuthState.Error("Lỗi: ${result.exceptionOrNull()?.localizedMessage ?: "Không thể gửi email reset"}")
             }
         }
     }

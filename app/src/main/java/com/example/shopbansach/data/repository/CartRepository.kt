@@ -73,6 +73,21 @@ class CartRepository {
         }
     }
 
+    suspend fun toggleAllSelection(isSelected: Boolean): Result<Unit> {
+        return try {
+            val collection = getCartCollection() ?: throw Exception("User not logged in")
+            val snapshot = collection.get().await()
+            val batch = firestore.batch()
+            for (doc in snapshot.documents) {
+                batch.update(doc.reference, "isSelected", isSelected)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun removeFromCart(bookId: String): Result<Unit> {
         return try {
             val collection = getCartCollection() ?: throw Exception("User not logged in")

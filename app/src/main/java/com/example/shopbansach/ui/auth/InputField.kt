@@ -26,6 +26,7 @@ fun AuthTextField(
     hint: String,
     isPassword: Boolean = false,
     imeAction: ImeAction = ImeAction.Next,
+    onDone: (() -> Unit)? = null,
     onValueChange: (String) -> Unit
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
@@ -70,7 +71,14 @@ fun AuthTextField(
         ),
         keyboardActions = KeyboardActions(
             onNext = { focusManager.moveFocus(FocusDirection.Down) },
-            onDone = { focusManager.clearFocus() }
+            onDone = { 
+                focusManager.clearFocus()
+                onDone?.invoke()
+            },
+            onGo = {
+                focusManager.clearFocus()
+                onDone?.invoke()
+            }
         ),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(

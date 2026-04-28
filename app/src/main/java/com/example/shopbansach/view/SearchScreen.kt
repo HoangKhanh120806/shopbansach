@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AutoStories
@@ -21,8 +23,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +44,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         bottomBar = {
@@ -82,7 +87,11 @@ fun SearchScreen(
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = {
+                        focusManager.clearFocus()
+                    })
                 )
                 
                 if (uiState.searchQuery.isNotEmpty()) {
@@ -90,7 +99,10 @@ fun SearchScreen(
                         text = "Hủy",
                         modifier = Modifier
                             .padding(start = 16.dp)
-                            .clickable { viewModel.onSearchQueryChange("") },
+                            .clickable { 
+                                viewModel.onSearchQueryChange("")
+                                focusManager.clearFocus()
+                            },
                         color = AuthColors.Hint,
                         fontSize = 16.sp
                     )

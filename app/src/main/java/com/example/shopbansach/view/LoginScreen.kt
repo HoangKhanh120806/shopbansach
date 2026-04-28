@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -100,6 +101,7 @@ fun LoginScreen(
         AuthTextField(
             value = email,
             hint = "Email hoặc Tên đăng nhập",
+            imeAction = ImeAction.Next,
             onValueChange = { email = it }
         )
 
@@ -109,6 +111,8 @@ fun LoginScreen(
             value = password,
             hint = "Mật khẩu",
             isPassword = true,
+            imeAction = ImeAction.Done,
+            onDone = { viewModel.login(email, password) },
             onValueChange = { password = it }
         )
 

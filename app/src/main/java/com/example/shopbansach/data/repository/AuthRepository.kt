@@ -54,6 +54,15 @@ class AuthRepository {
         }
     }
 
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return try {
+            auth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getCurrentUserData(): User? {
         val firebaseUser = auth.currentUser ?: return null
         return try {

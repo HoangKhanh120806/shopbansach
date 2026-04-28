@@ -79,6 +79,13 @@ fun CheckoutScreen(
         }
     }
 
+    // Hiển thị lỗi nếu có
+    LaunchedEffect(cartUiState.errorMessage) {
+        cartUiState.errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+        }
+    }
+
     // XÁC ĐỊNH DANH SÁCH SẢN PHẨM THANH TOÁN
     val checkoutItems = remember(buyNowBookId, bookUiState.book, cartUiState.cartItems) {
         if (buyNowBookId != null && bookUiState.book != null) {
@@ -123,26 +130,25 @@ fun CheckoutScreen(
                         if (fullName.isEmpty() || phoneNumber.isEmpty() || addressDetail.isEmpty()) {
                             Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin giao hàng", Toast.LENGTH_SHORT).show()
                         } else {
-                            if (buyNowBookId != null) {
-                                // Nếu mua ngay, không cần xóa giỏ hàng
+                            cartViewModel.processCheckout(
+                                checkoutItems = checkoutItems,
+                                isBuyNow = buyNowBookId != null
+                            ) {
                                 navController.navigate(Screen.ThankYou.route) {
                                     popUpTo(Screen.Home.route)
-                                }
-                            } else {
-                                // Xóa những món ĐÃ CHỌN trong giỏ hàng sau khi đặt hàng xong
-                                cartViewModel.clearSelectedItems {
-                                    navController.navigate(Screen.ThankYou.route) {
-                                        popUpTo(Screen.Home.route)
-                                    }
                                 }
                             }
                         }
                     },
                     modifier = Modifier.fillMaxWidth().padding(24.dp).height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    enabled = checkoutItems.isNotEmpty()
+                    enabled = checkoutItems.isNotEmpty() && !cartUiState.isLoading
                 ) {
-                    Text("Xác nhận đặt hàng", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    if (cartUiState.isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Xác nhận đặt hàng", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         },
