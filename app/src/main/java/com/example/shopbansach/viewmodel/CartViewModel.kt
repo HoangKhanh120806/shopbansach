@@ -55,7 +55,8 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
                 price = book.price,
                 imageUrl = book.imageUrl,
                 author = book.author,
-                quantity = 1
+                quantity = 1,
+                isSelected = false // Mặc định không chọn khi mới thêm
             )
             val result = repository.addToCart(item)
             if (result.isSuccess) {
@@ -76,6 +77,24 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
         }
     }
 
+    fun toggleSelection(bookId: String, isSelected: Boolean) {
+        viewModelScope.launch {
+            val result = repository.toggleSelection(bookId, isSelected)
+            if (result.isSuccess) {
+                loadCartItems()
+            }
+        }
+    }
+
+    fun toggleSelectAll(isSelected: Boolean) {
+        viewModelScope.launch {
+            _uiState.value.cartItems.forEach { 
+                repository.toggleSelection(it.bookId, isSelected)
+            }
+            loadCartItems()
+        }
+    }
+
     fun removeFromCart(bookId: String) {
         viewModelScope.launch {
             val result = repository.removeFromCart(bookId)
@@ -88,6 +107,16 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
     fun clearCart(onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             val result = repository.clearCart()
+            if (result.isSuccess) {
+                loadCartItems()
+                onComplete()
+            }
+        }
+    }
+
+    fun clearSelectedItems(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            val result = repository.clearSelectedItems()
             if (result.isSuccess) {
                 loadCartItems()
                 onComplete()

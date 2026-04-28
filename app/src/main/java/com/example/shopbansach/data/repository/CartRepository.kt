@@ -14,19 +14,19 @@ class CartRepository {
         firestore.collection("users").document(uid).collection("cart")
     }
 
-    suspend fun addToCart(cartItem: CartItem): Result<Unit> {
+    suspend fun addToCart(cartItem: CartItem, forceSelected: Boolean = false): Result<Unit> {
         return try {
             val collection = getCartCollection() ?: throw Exception("User not logged in")
             val docRef = collection.document(cartItem.bookId)
             
-            // Sử dụng transaction hoặc kiểm tra existence để đảm bảo tính nguyên tử
             firestore.runTransaction { transaction ->
                 val snapshot = transaction.get(docRef)
                 if (snapshot.exists()) {
-                    // Nếu đã có, chỉ tăng số lượng
                     transaction.update(docRef, "quantity", FieldValue.increment(cartItem.quantity.toLong()))
+                    if (forceSelected) {
+                        transaction.update(docRef, "isSelected", true)
+                    }
                 } else {
-                    // Nếu chưa có, thêm mới cả object
                     transaction.set(docRef, cartItem)
                 }
             }.await()
@@ -61,6 +61,16 @@ class CartRepository {
         }
     }
 
+    suspend fun toggleSelection(bookId: String, isSelected: Boolean): Result<Unit> {
+        return try {
+            val collection = getCartCollection() ?: throw Exception("User not logged in")
+            collection.document(bookId).update("isSelected", isSelected).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun removeFromCart(bookId: String): Result<Unit> {
         return try {
             val collection = getCartCollection() ?: throw Exception("User not logged in")
@@ -75,6 +85,21 @@ class CartRepository {
         return try {
             val collection = getCartCollection() ?: throw Exception("User not logged in")
             val snapshot = collection.get().await()
+            val batch = firestore.batch()
+            for (doc in snapshot.documents) {
+                batch.delete(doc.reference)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearSelectedItems(): Result<Unit> {
+        return try {
+            val collection = getCartCollection() ?: throw Exception("User not logged in")
+            val snapshot = collection.whereEqualTo("isSelected", true).get().await()
             val batch = firestore.batch()
             for (doc in snapshot.documents) {
                 batch.delete(doc.reference)

@@ -55,12 +55,10 @@ fun CheckoutScreen(
     var city by remember { mutableStateOf("") }
     var selectedPayment by remember { mutableStateOf("cod") }
 
-    // Tải danh sách địa chỉ khi vào trang
     LaunchedEffect(Unit) {
         addressViewModel.loadAddresses()
     }
 
-    // Tự động điền địa chỉ mặc định nếu có
     LaunchedEffect(addressUiState.addresses) {
         val defaultAddress = addressUiState.addresses.find { it.isDefault } 
             ?: addressUiState.addresses.firstOrNull()
@@ -73,7 +71,9 @@ fun CheckoutScreen(
         }
     }
 
-    val subtotal = cartUiState.cartItems.sumOf { it.price * it.quantity }
+    // CHỈ LẤY CÁC SẢN PHẨM ĐÃ ĐƯỢC TÍCH CHỌN
+    val selectedItems = cartUiState.cartItems.filter { it.isSelected }
+    val subtotal = selectedItems.sumOf { it.price * it.quantity }
     val shipping = if (subtotal > 0) 30000L else 0L
     val total = subtotal + shipping
 
@@ -96,7 +96,8 @@ fun CheckoutScreen(
                         if (fullName.isEmpty() || phoneNumber.isEmpty() || addressDetail.isEmpty()) {
                             Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin giao hàng", Toast.LENGTH_SHORT).show()
                         } else {
-                            cartViewModel.clearCart {
+                            // Xóa những món ĐÃ CHỌN sau khi đặt hàng xong
+                            cartViewModel.clearSelectedItems {
                                 navController.navigate(Screen.ThankYou.route) {
                                     popUpTo(Screen.Home.route)
                                 }
@@ -105,8 +106,7 @@ fun CheckoutScreen(
                     },
                     modifier = Modifier.fillMaxWidth().padding(24.dp).height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = cartUiState.cartItems.isNotEmpty()
+                    enabled = selectedItems.isNotEmpty()
                 ) {
                     Text("Xác nhận đặt hàng", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
@@ -119,7 +119,6 @@ fun CheckoutScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. Thông tin giao hàng
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -144,7 +143,6 @@ fun CheckoutScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 2. Phương thức thanh toán
             Text("Phương thức thanh toán", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             PaymentOption(selectedPayment == "cod", { selectedPayment = "cod" }, { Icon(Icons.Default.CreditCard, null) }, "Thanh toán khi nhận hàng (COD)", null)
@@ -152,12 +150,11 @@ fun CheckoutScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Tóm tắt đơn hàng
-            Text("Sản phẩm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            cartUiState.cartItems.forEach { item ->
+            Text("Sản phẩm thanh toán (${selectedItems.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            selectedItems.forEach { item ->
                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${item.quantity}x ${item.title}", modifier = Modifier.weight(1f), maxLines = 1)
-                    Text(String.format(Locale.US, "%,dđ", item.price * item.quantity))
+                    Text("${item.quantity}x ${item.title}", modifier = Modifier.weight(1f), maxLines = 1, fontSize = 14.sp)
+                    Text(String.format(Locale.US, "%,dđ", item.price * item.quantity), fontSize = 14.sp)
                 }
             }
             

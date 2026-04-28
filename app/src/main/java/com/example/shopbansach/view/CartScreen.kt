@@ -1,6 +1,7 @@
 package com.example.shopbansach.view
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,13 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.RemoveShoppingCart
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,20 +40,56 @@ fun CartScreen(
     viewModel: CartViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Tính toán chỉ dựa trên các sản phẩm ĐÃ CHỌN
+    val selectedItems = uiState.cartItems.filter { it.isSelected }
+    val subtotal = selectedItems.sumOf { it.price * it.quantity }
+    val shipping = if (subtotal > 0) 30000L else 0L
+    val isAllSelected = uiState.cartItems.isNotEmpty() && uiState.cartItems.all { it.isSelected }
+
+    var itemToRemove by remember { mutableStateOf<CartItem?>(null) }
+
+    if (itemToRemove != null) {
+        AlertDialog(
+            onDismissRequest = { itemToRemove = null },
+            title = { Text("Xóa sản phẩm") },
+            text = { Text("Bạn có muốn xóa \"${itemToRemove?.title}\" ra khỏi giỏ hàng không?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        itemToRemove?.let { viewModel.removeFromCart(it.bookId) }
+                        itemToRemove = null
+                    }
+                ) {
+                    Text("Xóa", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToRemove = null }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        "Giỏ hàng",
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Giỏ hàng (${uiState.cartItems.size})", 
+                        fontFamily = FontFamily.Serif, 
+                        fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    }
+                },
+                actions = {
+                    if (uiState.cartItems.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.clearCart() }) {
+                            Icon(Icons.Default.DeleteSweep, contentDescription = "Xóa tất cả", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -62,31 +98,52 @@ fun CartScreen(
             )
         },
         bottomBar = {
-            Column {
-                if (uiState.cartItems.isNotEmpty()) {
-                    Button(
-                        onClick = { navController.navigate(Screen.Checkout.route) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 8.dp)
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Tiến hành thanh toán", fontSize = 18.sp, color = Color.White)
-                    }
-                }
-                
-                BottomBar(
-                    currentRoute = Screen.Cart.route,
-                    onNavigate = { route ->
-                        if (route != Screen.Cart.route) {
-                            navController.navigate(route)
+            if (uiState.cartItems.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 16.dp,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Column(modifier = Modifier.padding(16.dp).navigationBarsPadding()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isAllSelected,
+                                onCheckedChange = { viewModel.toggleSelectAll(it) }
+                            )
+                            Text("Chọn tất cả", fontSize = 14.sp)
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Tổng thanh toán (${selectedItems.size})", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    String.format(Locale.US, "%,dđ", subtotal + shipping),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Button(
+                                onClick = { navController.navigate(Screen.Checkout.route) },
+                                modifier = Modifier.height(50.dp).width(160.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                enabled = selectedItems.isNotEmpty()
+                            ) {
+                                Text("MUA HÀNG", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
-                )
+                }
+            } else {
+                BottomBar(currentRoute = Screen.Cart.route, onNavigate = { navController.navigate(it) })
             }
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -98,136 +155,120 @@ fun CartScreen(
                 }
             }
             uiState.cartItems.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.ShoppingCart, 
-                            contentDescription = null, 
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                EmptyCartView(onShopNow = { navController.navigate(Screen.Home.route) })
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    items(uiState.cartItems) { item ->
+                        CartItemCard(
+                            item = item,
+                            onToggleSelection = { viewModel.toggleSelection(item.bookId, it) },
+                            onIncrease = { viewModel.updateQuantity(item.bookId, item.quantity + 1) },
+                            onDecrease = { 
+                                if (item.quantity > 1) {
+                                    viewModel.updateQuantity(item.bookId, item.quantity - 1)
+                                } else {
+                                    itemToRemove = item
+                                }
+                            },
+                            onRemove = { itemToRemove = item }
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Giỏ hàng của bạn đang trống", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        TextButton(onClick = { navController.navigate(Screen.Home.route) }) {
-                            Text("Mua sắm ngay")
+                    }
+                    
+                    if (selectedItems.isNotEmpty()) {
+                        item {
+                            OrderSummarySection(subtotal, shipping)
                         }
                     }
                 }
             }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(24.dp)
-                ) {
-                    items(uiState.cartItems) { item ->
-                        CartItemRow(
-                            item = item,
-                            onIncrease = { viewModel.updateQuantity(item.bookId, item.quantity + 1) },
-                            onDecrease = { viewModel.updateQuantity(item.bookId, item.quantity - 1) },
-                            onRemove = { viewModel.removeFromCart(item.bookId) }
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        val subtotal = uiState.cartItems.sumOf { it.price * it.quantity }.toDouble()
-                        SummarySection(subtotal = subtotal, shipping = 30000.0)
-                    }
-                }
-            }
         }
     }
 }
 
 @Composable
-fun CartItemRow(
+fun CartItemCard(
     item: CartItem,
+    onToggleSelection: (Boolean) -> Unit,
     onIncrease: () -> Unit,
     onDecrease: () -> Unit,
     onRemove: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp, 110.dp)
-                .shadow(4.dp, RoundedCornerShape(4.dp))
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            if (!item.imageUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = item.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                fontFamily = FontFamily.Serif,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = item.author,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = item.isSelected,
+                onCheckedChange = onToggleSelection,
+                modifier = Modifier.padding(end = 8.dp)
             )
             
-            Spacer(modifier = Modifier.height(12.dp))
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.size(60.dp, 85.dp).clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
             
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "${item.price * item.quantity}đ",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onDecrease, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            Icons.Default.Remove, 
-                            contentDescription = null, 
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
-                        "${item.quantity}", 
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        color = MaterialTheme.colorScheme.onSurface
+                        text = item.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = onIncrease, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            Icons.Default.Add, 
-                            contentDescription = null, 
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
+                Text(text = item.author, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 
-                IconButton(onClick = onRemove) {
-                    Icon(
-                        Icons.Default.DeleteOutline, 
-                        contentDescription = null, 
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Text(
+                    text = String.format(Locale.US, "%,dđ", item.price),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), 
+                            RoundedCornerShape(8.dp)
+                        )
+                    ) {
+                        IconButton(onClick = onDecrease, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Remove, null, modifier = Modifier.size(14.dp))
+                        }
+                        Text(
+                            text = "${item.quantity}", 
+                            modifier = Modifier.padding(horizontal = 6.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        IconButton(onClick = onIncrease, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp))
+                        }
+                    }
+                    
+                    IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(20.dp), tint = Color.Gray)
+                    }
                 }
             }
         }
@@ -235,44 +276,60 @@ fun CartItemRow(
 }
 
 @Composable
-fun SummarySection(subtotal: Double, shipping: Double) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = CardDefaults.outlinedCardBorder()
+fun OrderSummarySection(subtotal: Long, shipping: Long) {
+    Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+        Text("Tóm tắt (Sản phẩm đã chọn)", fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = FontFamily.Serif)
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        SummaryDetailRow("Tiền hàng", String.format(Locale.US, "%,dđ", subtotal))
+        SummaryDetailRow("Phí vận chuyển", String.format(Locale.US, "%,dđ", shipping))
+        
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+        
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Tổng cộng", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(
+                String.format(Locale.US, "%,dđ", subtotal + shipping), 
+                fontWeight = FontWeight.ExtraBold, 
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun SummaryDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Tạm tính", color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    String.format(Locale.US, "₫%,.0f", subtotal), 
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Phí vận chuyển", color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    String.format(Locale.US, "₫%,.0f", shipping), 
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    "Tổng cộng", 
-                    fontWeight = FontWeight.Bold, 
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    String.format(Locale.US, "₫%,.0f", subtotal + shipping),
-                    fontWeight = FontWeight.ExtraBold, 
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+        Text(value, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun EmptyCartView(onShopNow: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.RemoveShoppingCart, 
+                contentDescription = null, 
+                modifier = Modifier.size(100.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Giỏ hàng của bạn đang trống", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                "Hãy quay lại và chọn cho mình những cuốn sách yêu thích nhé!",
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 40.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onShopNow, shape = RoundedCornerShape(12.dp)) {
+                Text("KHÁM PHÁ NGAY")
             }
         }
     }

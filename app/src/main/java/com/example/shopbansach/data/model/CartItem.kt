@@ -6,5 +6,6 @@ data class CartItem(
     val price: Long = 0,
     val imageUrl: String? = null,
     val quantity: Int = 1,
-    val author: String = ""
+    val author: String = "",
+    val isSelected: Boolean = false // Mặc định là không tích
 )
