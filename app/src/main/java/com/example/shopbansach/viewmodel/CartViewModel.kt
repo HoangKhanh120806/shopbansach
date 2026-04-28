@@ -11,9 +11,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+sealed class CartActionState {
+    object Idle : CartActionState()
+    object Loading : CartActionState()
+    object Success : CartActionState()
+    data class Error(val message: String) : CartActionState()
+}
+
 data class CartUiState(
     val cartItems: List<CartItem> = emptyList(),
     val isLoading: Boolean = false,
+    val actionState: CartActionState = CartActionState.Idle,
     val errorMessage: String? = null
 )
 
@@ -40,6 +48,7 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
 
     fun addToCart(book: Book) {
         viewModelScope.launch {
+            _uiState.update { it.copy(actionState = CartActionState.Loading) }
             val item = CartItem(
                 bookId = book.id,
                 title = book.title,
@@ -48,22 +57,45 @@ class CartViewModel(private val repository: CartRepository = CartRepository()) :
                 author = book.author,
                 quantity = 1
             )
-            repository.addToCart(item)
-            loadCartItems()
+            val result = repository.addToCart(item)
+            if (result.isSuccess) {
+                _uiState.update { it.copy(actionState = CartActionState.Success) }
+                loadCartItems()
+            } else {
+                _uiState.update { it.copy(actionState = CartActionState.Error(result.exceptionOrNull()?.message ?: "Lỗi thêm vào giỏ")) }
+            }
         }
     }
 
     fun updateQuantity(bookId: String, newQuantity: Int) {
         viewModelScope.launch {
-            repository.updateQuantity(bookId, newQuantity)
-            loadCartItems()
+            val result = repository.updateQuantity(bookId, newQuantity)
+            if (result.isSuccess) {
+                loadCartItems()
+            }
         }
     }
 
     fun removeFromCart(bookId: String) {
         viewModelScope.launch {
-            repository.removeFromCart(bookId)
-            loadCartItems()
+            val result = repository.removeFromCart(bookId)
+            if (result.isSuccess) {
+                loadCartItems()
+            }
         }
+    }
+
+    fun clearCart(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            val result = repository.clearCart()
+            if (result.isSuccess) {
+                loadCartItems()
+                onComplete()
+            }
+        }
+    }
+
+    fun resetActionState() {
+        _uiState.update { it.copy(actionState = CartActionState.Idle) }
     }
 }

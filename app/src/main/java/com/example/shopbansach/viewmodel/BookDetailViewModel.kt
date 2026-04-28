@@ -7,10 +7,12 @@ import com.example.shopbansach.data.repository.FirebaseBookRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class BookDetailUiState(
     val book: Book? = null,
+    val relatedBooks: List<Book> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -22,16 +24,22 @@ class BookDetailViewModel(private val repository: FirebaseBookRepository = Fireb
 
     fun getBookDetail(bookId: String) {
         viewModelScope.launch {
-            _uiState.value = BookDetailUiState(isLoading = true)
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val book = repository.getBookById(bookId)
                 if (book != null) {
-                    _uiState.value = BookDetailUiState(book = book, isLoading = false)
+                    // Lấy sách liên quan (cùng thể loại hoặc cùng tác giả)
+                    val allBooks = repository.getAllBooks(limit = 20)
+                    val related = allBooks.filter { 
+                        it.id != bookId && (it.category == book.category || it.author == book.author)
+                    }.take(6)
+                    
+                    _uiState.update { it.copy(book = book, relatedBooks = related, isLoading = false) }
                 } else {
-                    _uiState.value = BookDetailUiState(isLoading = false, errorMessage = "Không tìm thấy sách")
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Không tìm thấy sách") }
                 }
             } catch (e: Exception) {
-                _uiState.value = BookDetailUiState(isLoading = false, errorMessage = e.message)
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
         }
     }
