@@ -26,18 +26,24 @@ class AddressRepository {
     suspend fun saveAddress(address: Address): Result<Unit> {
         return try {
             val collection = getAddressCollection() ?: throw Exception("User not logged in")
-            
-            // Nếu là địa chỉ mặc định, bỏ mặc định các cái khác
+            val batch = firestore.batch()
+
+            // Nếu là địa chỉ mặc định, bỏ mặc định tất cả các cái khác TRONG CÙNG BATCH
             if (address.isDefault) {
                 val snapshot = collection.whereEqualTo("isDefault", true).get().await()
-                val batch = firestore.batch()
                 for (doc in snapshot.documents) {
-                    batch.update(doc.reference, "isDefault", false)
+                    if (doc.id != address.id) {
+                        batch.update(doc.reference, "isDefault", false)
+                    }
                 }
-                batch.commit().await()
             }
 
-            collection.document(address.id).set(address).await()
+            // Thêm lệnh lưu địa chỉ mới vào batch
+            val docRef = collection.document(address.id)
+            batch.set(docRef, address)
+
+            // Thực thi toàn bộ thay đổi một lần duy nhất
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

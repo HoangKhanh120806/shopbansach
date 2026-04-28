@@ -73,7 +73,6 @@ class CartViewModel(
     }
 
     fun updateQuantity(bookId: String, newQuantity: Int) {
-        // Cập nhật cục bộ trước (Optimistic UI)
         _uiState.update { state ->
             state.copy(
                 cartItems = state.cartItems.map { 
@@ -85,13 +84,12 @@ class CartViewModel(
         viewModelScope.launch {
             val result = repository.updateQuantity(bookId, newQuantity)
             if (!result.isSuccess) {
-                loadCartItems() // Rollback nếu lỗi
+                loadCartItems()
             }
         }
     }
 
     fun toggleSelection(bookId: String, isSelected: Boolean) {
-        // Cập nhật cục bộ ngay lập tức để UI thay đổi ngay
         _uiState.update { state ->
             state.copy(
                 cartItems = state.cartItems.map { 
@@ -103,14 +101,12 @@ class CartViewModel(
         viewModelScope.launch {
             val result = repository.toggleSelection(bookId, isSelected)
             if (!result.isSuccess) {
-                // Nếu lưu database thất bại, tải lại để đồng bộ đúng dữ liệu thực tế
                 loadCartItems()
             }
         }
     }
 
     fun toggleSelectAll(isSelected: Boolean) {
-        // Cập nhật cục bộ cho tất cả
         _uiState.update { state ->
             state.copy(
                 cartItems = state.cartItems.map { it.copy(isSelected = isSelected) }
@@ -118,7 +114,6 @@ class CartViewModel(
         }
 
         viewModelScope.launch {
-            // Sử dụng batch update mới để tối ưu performance
             val result = repository.toggleAllSelection(isSelected)
             if (!result.isSuccess) {
                 loadCartItems()
@@ -156,18 +151,20 @@ class CartViewModel(
     }
 
     /**
-     * Xử lý thanh toán: Trừ tồn kho và xóa giỏ hàng (nếu không phải mua ngay)
+     * Xử lý thanh toán an toàn: Kiểm tra tồn kho trước khi trừ
      */
     fun processCheckout(checkoutItems: List<CartItem>, isBuyNow: Boolean, onComplete: () -> Unit) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // 1. Cập nhật tồn kho cho từng sản phẩm
-                checkoutItems.forEach { item ->
-                    bookRepository.updateStock(item.bookId, item.quantity)
+                // Duyệt qua từng sản phẩm để cập nhật tồn kho bằng Transaction
+                for (item in checkoutItems) {
+                    val result = bookRepository.updateStockWithCheck(item.bookId, item.quantity)
+                    if (result.isFailure) {
+                        throw result.exceptionOrNull() ?: Exception("Lỗi cập nhật tồn kho cho sản phẩm ${item.title}")
+                    }
                 }
 
-                // 2. Nếu thanh toán từ giỏ hàng, xóa các mục đã chọn
                 if (!isBuyNow) {
                     repository.clearSelectedItems()
                     loadCartItems()
@@ -182,6 +179,6 @@ class CartViewModel(
     }
 
     fun resetActionState() {
-        _uiState.update { it.copy(actionState = CartActionState.Idle) }
+        _uiState.update { it.copy(actionState = CartActionState.Idle, errorMessage = null) }
     }
 }

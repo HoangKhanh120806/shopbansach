@@ -55,7 +55,6 @@ fun BookDetailScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    // State cho việc chọn số lượng
     var showQuantitySheet by remember { mutableStateOf(false) }
     var selectedQuantity by remember { mutableIntStateOf(1) }
 
@@ -77,7 +76,7 @@ fun BookDetailScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { /* TODO: Wishlist */ },
+                        onClick = { /* Wishlist */ },
                         modifier = Modifier.background(Color.White.copy(alpha = 0.5f), CircleShape)
                     ) {
                         Icon(Icons.Default.FavoriteBorder, contentDescription = "Wishlist")
@@ -118,7 +117,7 @@ fun BookDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 80.dp) // Space for bottom bar
+                        .padding(bottom = 80.dp)
                         .verticalScroll(scrollState)
                 ) {
                     BookHeaderSection(book)
@@ -155,10 +154,12 @@ fun BookDetailScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // THÔNG TIN NGƯỜI BÁN (SHOP)
+                        // THÔNG TIN NGƯỜI BÁN
                         SellerInfoSection(uiState.seller) {
-                            uiState.seller?.id?.let { id ->
-                                navController.navigate(Screen.SellerShop.createRoute(id))
+                            if (uiState.seller != null) {
+                                navController.navigate(Screen.SellerShop.createRoute(uiState.seller!!.id))
+                            } else {
+                                Toast.makeText(context, "Không thể tải thông tin Shop. Vui lòng kiểm tra kết nối!", Toast.LENGTH_SHORT).show()
                             }
                         }
 
@@ -220,7 +221,6 @@ fun BookDetailScreen(
         }
     }
 
-    // Modal Bottom Sheet để chọn số lượng
     if (showQuantitySheet && uiState.book != null) {
         val book = uiState.book!!
         ModalBottomSheet(
@@ -279,13 +279,13 @@ fun SellerInfoSection(seller: User?, onVisitShop: () -> Unit) {
             
             Column {
                 Text(
-                    text = seller?.shopName ?: seller?.name ?: "Người bán ẩn danh",
+                    text = seller?.shopName ?: seller?.name ?: "Đang tải thông tin người bán...",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
                 Text(
-                    text = "Đang hoạt động",
-                    color = Color(0xFF4CAF50),
+                    text = if (seller != null) "Đang hoạt động" else "Vui lòng đợi",
+                    color = if (seller != null) Color(0xFF4CAF50) else Color.Gray,
                     fontSize = 12.sp
                 )
             }

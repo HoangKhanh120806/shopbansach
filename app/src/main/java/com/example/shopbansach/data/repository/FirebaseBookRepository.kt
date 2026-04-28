@@ -1,6 +1,7 @@
 package com.example.shopbansach.data.repository
 
 import com.example.shopbansach.data.model.Book
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -9,9 +10,9 @@ import java.util.Locale
 
 class FirebaseBookRepository {
     private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
     private val booksCollection = firestore.collection("books")
 
-    // Lấy tất cả sách (có giới hạn để tránh tốn băng thông)
     suspend fun getAllBooks(limit: Long = 50): List<Book> {
         return try {
             val snapshot = booksCollection.limit(limit).get().await()
@@ -21,23 +22,19 @@ class FirebaseBookRepository {
         }
     }
 
-    // Lấy sách nổi bật (Featured)
     suspend fun getFeaturedBooks(): List<Book> {
         return try {
-            // Ưu tiên lấy theo rating cao
             val snapshot = booksCollection
                 .orderBy("rating", Query.Direction.DESCENDING)
                 .limit(10)
                 .get().await()
             snapshot.toObjects(Book::class.java)
         } catch (e: Exception) {
-            // Fallback nếu chưa tạo index cho rating
             val snapshot = booksCollection.limit(10).get().await()
             snapshot.toObjects(Book::class.java)
         }
     }
 
-    // Lấy sách mới cập nhật
     suspend fun getNewArrivals(): List<Book> {
         return try {
             val snapshot = booksCollection.limit(20).get().await()
@@ -47,7 +44,6 @@ class FirebaseBookRepository {
         }
     }
 
-    // Tìm sách theo ID
     suspend fun getBookById(id: String): Book? {
         if (id.isEmpty()) return null
         return try {
@@ -58,30 +54,17 @@ class FirebaseBookRepository {
         }
     }
 
-    /**
-     * Tối ưu tìm kiếm: 
-     * Sử dụng prefix query trên field titleLowercase để hỗ trợ tìm kiếm không phân biệt hoa thường.
-     */
     suspend fun searchBooks(queryText: String): List<Book> {
         if (queryText.isEmpty()) return emptyList()
         val queryLower = queryText.lowercase(Locale.ROOT)
-        
         return try {
-            // Tìm kiếm theo tiền tố của titleLowercase
             val snapshot = booksCollection
                 .whereGreaterThanOrEqualTo("titleLowercase", queryLower)
                 .whereLessThanOrEqualTo("titleLowercase", queryLower + "\uf8ff")
                 .limit(20)
                 .get().await()
-            
             val results = snapshot.toObjects(Book::class.java)
-            
-            // Nếu không có kết quả, dùng fallback để tìm kiếm chứa chuỗi (contains) trên dữ liệu nhỏ
-            if (results.isEmpty()) {
-                manualSearchFallback(queryText)
-            } else {
-                results
-            }
+            if (results.isEmpty()) manualSearchFallback(queryText) else results
         } catch (e: Exception) {
             manualSearchFallback(queryText)
         }
@@ -100,7 +83,6 @@ class FirebaseBookRepository {
         }
     }
 
-    // Lấy sách của một người dùng cụ thể (Shop của tôi)
     suspend fun getBooksByOwner(ownerId: String): List<Book> {
         return try {
             val snapshot = booksCollection.whereEqualTo("ownerId", ownerId).get().await()
@@ -110,32 +92,62 @@ class FirebaseBookRepository {
         }
     }
 
-    // Lưu sách mới hoặc cập nhật sách hiện có
+    /**
+     * Lưu sách an toàn: Kiểm tra quyền sở hữu nếu là cập nhật
+     */
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
-            booksCollection.document(book.id).set(book).await()
+            val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
+            val docRef = booksCollection.document(book.id)
+            val existingDoc = docRef.get().await()
+
+            if (existingDoc.exists()) {
+                val ownerId = existingDoc.getString("ownerId")
+                if (ownerId != currentUserId) {
+                    throw Exception("Bạn không có quyền chỉnh sửa sách này")
+                }
+            }
+            
+            docRef.set(book).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Cập nhật số lượng tồn kho khi mua hàng
-    suspend fun updateStock(bookId: String, quantityPurchased: Int): Result<Unit> {
+    suspend fun updateStockWithCheck(bookId: String, quantityPurchased: Int): Result<Unit> {
         return try {
-            booksCollection.document(bookId)
-                .update("stock", FieldValue.increment(-quantityPurchased.toLong()))
-                .await()
+            val bookRef = booksCollection.document(bookId)
+            firestore.runTransaction { transaction ->
+                val snapshot = transaction.get(bookRef)
+                val currentStock = snapshot.getLong("stock") ?: 0L
+                if (currentStock < quantityPurchased) {
+                    throw Exception("Sản phẩm '${snapshot.getString("title")}' đã hết hàng")
+                }
+                transaction.update(bookRef, "stock", currentStock - quantityPurchased)
+            }.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Xóa sách
+    /**
+     * Xóa sách an toàn: Kiểm tra quyền sở hữu
+     */
     suspend fun deleteBook(bookId: String): Result<Unit> {
         return try {
-            booksCollection.document(bookId).delete().await()
+            val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
+            val docRef = booksCollection.document(bookId)
+            val existingDoc = docRef.get().await()
+
+            if (existingDoc.exists()) {
+                val ownerId = existingDoc.getString("ownerId")
+                if (ownerId != currentUserId) {
+                    throw Exception("Bạn không có quyền xóa sách này")
+                }
+                docRef.delete().await()
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
