@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Storefront
@@ -39,6 +40,31 @@ fun MyShopScreen(
     viewModel: MyShopViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var bookToDelete by remember { mutableStateOf<Book?>(null) }
+
+    if (bookToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { bookToDelete = null },
+            title = { Text("Xác nhận xóa") },
+            text = { Text("Bạn có chắc chắn muốn xóa cuốn sách '${bookToDelete?.title}' này không?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        bookToDelete?.let { viewModel.deleteBook(it.id) }
+                        bookToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { bookToDelete = null }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -108,9 +134,15 @@ fun MyShopScreen(
                     }
                 } else {
                     items(uiState.myBooks) { book ->
-                        MyProductItem(book = book, onEdit = {
-                            // TODO: Điều hướng sang trang sửa sách
-                        })
+                        MyProductItem(
+                            book = book, 
+                            onEdit = {
+                                navController.navigate(Screen.EditBook.createRoute(book.id))
+                            },
+                            onDelete = {
+                                bookToDelete = book
+                            }
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
@@ -163,7 +195,7 @@ fun ShopHeaderSection() {
 }
 
 @Composable
-fun MyProductItem(book: Book, onEdit: () -> Unit) {
+fun MyProductItem(book: Book, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -211,18 +243,36 @@ fun MyProductItem(book: Book, onEdit: () -> Unit) {
                 )
             }
 
-            IconButton(
-                onClick = onEdit,
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                )
-            ) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Edit",
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            Row {
+                IconButton(
+                    onClick = onEdit,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = onDelete,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }

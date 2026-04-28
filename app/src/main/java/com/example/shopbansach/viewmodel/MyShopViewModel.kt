@@ -39,4 +39,13 @@ class MyShopViewModel(private val repository: FirebaseBookRepository = FirebaseB
             }
         }
     }
+
+    fun deleteBook(bookId: String) {
+        viewModelScope.launch {
+            val result = repository.deleteBook(bookId)
+            if (result.isSuccess) {
+                loadMyShopBooks() // Tải lại danh sách sau khi xóa
+            }
+        }
+    }
 }

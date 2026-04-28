@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Locale
+import java.util.UUID
 
 sealed class BookActionState {
     object Idle : BookActionState()
@@ -30,7 +31,8 @@ class BookViewModel(
 
     private val auth = FirebaseAuth.getInstance()
 
-    fun addBook(
+    fun saveBook(
+        bookId: String? = null, // Nếu null là thêm mới, có giá trị là chỉnh sửa
         title: String,
         author: String,
         price: String,
@@ -38,42 +40,52 @@ class BookViewModel(
         synopsis: String,
         category: String,
         stock: String,
-        imageUri: Uri?
+        imageUri: Uri?,
+        existingImageUrl: String? = null,
+        rating: Double = 0.0
     ) {
-        if (title.isEmpty() || price.isEmpty() || imageUri == null) {
-            _actionState.value = BookActionState.Error("Vui lòng nhập đầy đủ thông tin bắt buộc và chọn ảnh")
+        if (title.isEmpty() || price.isEmpty() || (imageUri == null && existingImageUrl == null)) {
+            _actionState.value = BookActionState.Error("Vui lòng nhập đầy đủ thông tin và chọn ảnh")
             return
         }
 
         viewModelScope.launch {
             _actionState.value = BookActionState.Loading
             try {
-                // 1. Upload ảnh lên Cloudinary
-                val uploadResult = cloudinaryRepository.uploadImage(imageUri)
-                if (uploadResult.isSuccess) {
-                    val imageUrl = uploadResult.getOrNull()
-                    
-                    // 2. Lưu vào Firestore
-                    val bookId = java.util.UUID.randomUUID().toString()
-                    val newBook = Book(
-                        id = bookId,
-                        title = title,
-                        titleLowercase = title.lowercase(Locale.ROOT), // Thêm để hỗ trợ search
-                        author = author,
-                        price = price.toLongOrNull() ?: 0L,
-                        pages = pages.toIntOrNull() ?: 0,
-                        synopsis = synopsis,
-                        imageUrl = imageUrl,
-                        ownerId = auth.currentUser?.uid ?: "",
-                        category = category.ifEmpty { "Khác" },
-                        stock = stock.toIntOrNull() ?: 0,
-                        rating = 0.0 // Mặc định 0 sao cho sách mới
-                    )
-                    
-                    bookRepository.addBook(newBook)
+                var finalImageUrl = existingImageUrl
+
+                // Nếu chọn ảnh mới, upload lên Cloudinary
+                if (imageUri != null) {
+                    val uploadResult = cloudinaryRepository.uploadImage(imageUri)
+                    if (uploadResult.isSuccess) {
+                        finalImageUrl = uploadResult.getOrNull()
+                    } else {
+                        _actionState.value = BookActionState.Error("Lỗi upload ảnh")
+                        return@launch
+                    }
+                }
+
+                val id = bookId ?: UUID.randomUUID().toString()
+                val newBook = Book(
+                    id = id,
+                    title = title,
+                    titleLowercase = title.lowercase(Locale.ROOT),
+                    author = author,
+                    price = price.toLongOrNull() ?: 0L,
+                    pages = pages.toIntOrNull() ?: 0,
+                    synopsis = synopsis,
+                    imageUrl = finalImageUrl,
+                    ownerId = auth.currentUser?.uid ?: "",
+                    category = category.ifEmpty { "Khác" },
+                    stock = stock.toIntOrNull() ?: 0,
+                    rating = rating
+                )
+                
+                val result = bookRepository.addBook(newBook)
+                if (result.isSuccess) {
                     _actionState.value = BookActionState.Success
                 } else {
-                    _actionState.value = BookActionState.Error("Lỗi upload ảnh")
+                    _actionState.value = BookActionState.Error("Lỗi lưu dữ liệu: ${result.exceptionOrNull()?.message}")
                 }
             } catch (e: Exception) {
                 _actionState.value = BookActionState.Error("Lỗi: ${e.message}")

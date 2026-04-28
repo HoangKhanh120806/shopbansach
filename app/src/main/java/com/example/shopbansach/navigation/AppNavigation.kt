@@ -104,6 +104,14 @@ fun AppNavigation(
             }
 
             composable(
+                route = Screen.EditBook.route,
+                arguments = listOf(navArgument("bookId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+                EditBookScreen(navController = navController, bookId = bookId)
+            }
+
+            composable(
                 route = Screen.BookDetail.route,
                 arguments = listOf(navArgument("bookId") { type = NavType.StringType })
             ) { backStackEntry ->

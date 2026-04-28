@@ -240,7 +240,16 @@ fun AddBookScreen(navController: NavController) {
             // Nút đăng bán
             Button(
                 onClick = {
-                    viewModel.addBook(title, author, price, pages, synopsis, category, stock, selectedImageUri)
+                    viewModel.saveBook(
+                        title = title,
+                        author = author,
+                        price = price,
+                        pages = pages,
+                        synopsis = synopsis,
+                        category = category,
+                        stock = stock,
+                        imageUri = selectedImageUri
+                    )
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),

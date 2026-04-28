@@ -109,12 +109,23 @@ class FirebaseBookRepository {
         }
     }
 
-    // Lưu sách mới
-    suspend fun addBook(book: Book) {
-        try {
+    // Lưu sách mới hoặc cập nhật sách hiện có
+    suspend fun addBook(book: Book): Result<Unit> {
+        return try {
             booksCollection.document(book.id).set(book).await()
+            Result.success(Unit)
         } catch (e: Exception) {
-            // Log error
+            Result.failure(e)
+        }
+    }
+
+    // Xóa sách
+    suspend fun deleteBook(bookId: String): Result<Unit> {
+        return try {
+            booksCollection.document(bookId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }
