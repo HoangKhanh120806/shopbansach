@@ -1,6 +1,9 @@
 package com.example.shopbansach.view
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.EditLocation
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -24,209 +29,157 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.ui.auth.AuthColors
+import com.example.shopbansach.viewmodel.AddressViewModel
+import com.example.shopbansach.viewmodel.CartViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CheckoutScreen(navController: NavController) {
+fun CheckoutScreen(
+    navController: NavController,
+    cartViewModel: CartViewModel = viewModel(),
+    addressViewModel: AddressViewModel = viewModel()
+) {
+    val cartUiState by cartViewModel.uiState.collectAsState()
+    val addressUiState by addressViewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var addressDetail by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
-    var saveAddress by remember { mutableStateOf(true) }
-    var selectedPayment by remember { mutableStateOf("card") }
+    var selectedPayment by remember { mutableStateOf("cod") }
+
+    // Tải danh sách địa chỉ khi vào trang
+    LaunchedEffect(Unit) {
+        addressViewModel.loadAddresses()
+    }
+
+    // Tự động điền địa chỉ mặc định nếu có
+    LaunchedEffect(addressUiState.addresses) {
+        val defaultAddress = addressUiState.addresses.find { it.isDefault } 
+            ?: addressUiState.addresses.firstOrNull()
+        
+        defaultAddress?.let {
+            fullName = it.fullName
+            phoneNumber = it.phoneNumber
+            addressDetail = it.addressDetail
+            city = it.city
+        }
+    }
+
+    val subtotal = cartUiState.cartItems.sumOf { it.price * it.quantity }
+    val shipping = if (subtotal > 0) 30000L else 0L
+    val total = subtotal + shipping
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "Secure Checkout",
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                },
+                title = { Text("Thanh toán", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { /* TODO */ }) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = AuthColors.Background
-                )
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AuthColors.Background)
             )
         },
         bottomBar = {
-            Surface(
-                color = AuthColors.Background,
-                tonalElevation = 8.dp
-            ) {
+            Surface(color = AuthColors.Background, tonalElevation = 8.dp) {
                 Button(
-                    onClick = { navController.navigate(Screen.ThankYou.route) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp)
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                    shape = RoundedCornerShape(8.dp)
+                    onClick = {
+                        if (fullName.isEmpty() || phoneNumber.isEmpty() || addressDetail.isEmpty()) {
+                            Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin giao hàng", Toast.LENGTH_SHORT).show()
+                        } else {
+                            cartViewModel.clearCart {
+                                navController.navigate(Screen.ThankYou.route) {
+                                    popUpTo(Screen.Home.route)
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(24.dp).height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = cartUiState.cartItems.isNotEmpty()
                 ) {
-                    Text(
-                        "Đặt hàng ngay",
-                        color = Color(0xFFD6BFA9),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Xác nhận đặt hàng", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         },
         containerColor = AuthColors.Background
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp).verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Section: Địa chỉ giao hàng
-            Text(
-                "Địa chỉ giao hàng",
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = AuthColors.Primary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            CheckoutTextField(
-                value = fullName, 
-                onValueChange = { fullName = it }, 
-                placeholder = "Họ và tên",
-                imeAction = ImeAction.Next,
-                onAction = { focusManager.moveFocus(FocusDirection.Down) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CheckoutTextField(
-                value = phoneNumber, 
-                onValueChange = { phoneNumber = it }, 
-                placeholder = "Số điện thoại",
-                keyboardType = KeyboardType.Phone,
-                imeAction = ImeAction.Next,
-                onAction = { focusManager.moveFocus(FocusDirection.Down) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CheckoutTextField(
-                value = addressDetail, 
-                onValueChange = { addressDetail = it }, 
-                placeholder = "Địa chỉ chi tiết",
-                imeAction = ImeAction.Next,
-                onAction = { focusManager.moveFocus(FocusDirection.Down) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CheckoutTextField(
-                value = city, 
-                onValueChange = { city = it }, 
-                placeholder = "Tỉnh/Thành phố",
-                imeAction = ImeAction.Done,
-                onAction = { focusManager.clearFocus() }
-            )
-
+            // 1. Thông tin giao hàng
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(
-                    checked = saveAddress,
-                    onCheckedChange = { saveAddress = it },
-                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFFAC865C))
+                Text("Địa chỉ giao hàng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Chọn địa chỉ khác",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.clickable { navController.navigate(Screen.AddressList.route) }
                 )
-                Text("Lưu địa chỉ này", fontSize = 14.sp)
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            CheckoutTextField(fullName, { fullName = it }, "Họ và tên người nhận", imeAction = ImeAction.Next) { focusManager.moveFocus(FocusDirection.Down) }
+            Spacer(modifier = Modifier.height(8.dp))
+            CheckoutTextField(phoneNumber, { phoneNumber = it }, "Số điện thoại", KeyboardType.Phone, ImeAction.Next) { focusManager.moveFocus(FocusDirection.Down) }
+            Spacer(modifier = Modifier.height(8.dp))
+            CheckoutTextField(addressDetail, { addressDetail = it }, "Địa chỉ chi tiết (Số nhà, tên đường)", imeAction = ImeAction.Next) { focusManager.moveFocus(FocusDirection.Down) }
+            Spacer(modifier = Modifier.height(8.dp))
+            CheckoutTextField(city, { city = it }, "Tỉnh/Thành phố", imeAction = ImeAction.Done) { focusManager.clearFocus() }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section: Phương thức thanh toán
-            Text(
-                "Phương thức thanh toán",
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = AuthColors.Primary
-            )
+            // 2. Phương thức thanh toán
+            Text("Phương thức thanh toán", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
-            
-            PaymentOption(
-                selected = selectedPayment == "card",
-                onClick = { selectedPayment = "card" },
-                icon = { Icon(Icons.Default.CreditCard, null, modifier = Modifier.size(24.dp)) },
-                title = "Thẻ tín dụng/Ghi nợ (Visa, Mastercard)",
-                subtitle = "•••• 4567"
-            )
-            
-            PaymentOption(
-                selected = selectedPayment == "momo",
-                onClick = { selectedPayment = "momo" },
-                icon = { 
-                    Box(modifier = Modifier.size(24.dp).background(Color(0xFFA50064), RoundedCornerShape(4.dp)))
-                },
-                title = "Ví Momo",
-                subtitle = null
-            )
+            PaymentOption(selectedPayment == "cod", { selectedPayment = "cod" }, { Icon(Icons.Default.CreditCard, null) }, "Thanh toán khi nhận hàng (COD)", null)
+            PaymentOption(selectedPayment == "momo", { selectedPayment = "momo" }, { Box(Modifier.size(24.dp).background(Color(0xFFA50064), RoundedCornerShape(4.dp))) }, "Ví điện tử Momo", "Khuyên dùng")
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section: Tóm tắt đơn hàng
-            Text(
-                "Tóm tắt đơn hàng",
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = AuthColors.Primary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            // 3. Tóm tắt đơn hàng
+            Text("Sản phẩm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            cartUiState.cartItems.forEach { item ->
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${item.quantity}x ${item.title}", modifier = Modifier.weight(1f), maxLines = 1)
+                    Text(String.format(Locale.US, "%,dđ", item.price * item.quantity))
+                }
+            }
             
-            SummaryRow("Tạm tính:", "570,000 VND")
-            SummaryRow("Phí vận chuyển:", "30,000 VND")
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            SummaryRow("Tạm tính:", String.format(Locale.US, "%,dđ", subtotal))
+            SummaryRow("Phí vận chuyển:", String.format(Locale.US, "%,dđ", shipping))
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Tổng cộng:", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("600,000 VND", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = AuthColors.Primary)
+                Text(String.format(Locale.US, "%,dđ", total), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
             }
-
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
 @Composable
-fun CheckoutTextField(
-    value: String, 
-    onValueChange: (String) -> Unit, 
-    placeholder: String,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    imeAction: ImeAction = ImeAction.Default,
-    onAction: () -> Unit = {}
-) {
+fun CheckoutTextField(value: String, onValueChange: (String) -> Unit, placeholder: String, keyboardType: KeyboardType = KeyboardType.Text, imeAction: ImeAction = ImeAction.Default, onAction: () -> Unit = {}) {
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder, color = Color.Gray) },
+        value = value, onValueChange = onValueChange,
+        placeholder = { Text(placeholder, fontSize = 14.sp) },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = Color(0xFFD6BFA9).copy(alpha = 0.5f),
-            focusedBorderColor = Color(0xFFD6BFA9)
-        ),
+        shape = RoundedCornerShape(12.dp),
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(onAny = { onAction() })
@@ -234,31 +187,20 @@ fun CheckoutTextField(
 }
 
 @Composable
-fun PaymentOption(
-    selected: Boolean,
-    onClick: () -> Unit,
-    icon: @Composable () -> Unit,
-    title: String,
-    subtitle: String?
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+fun PaymentOption(selected: Boolean, onClick: () -> Unit, icon: @Composable () -> Unit, title: String, subtitle: String?) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f)),
+        modifier = Modifier.padding(vertical = 4.dp).fillMaxWidth()
     ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(selectedColor = Color(0xFFAC865C))
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        icon()
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            if (subtitle != null) {
-                Text(subtitle, fontSize = 12.sp, color = Color.Gray)
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(selected = selected, onClick = onClick)
+            icon()
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
             }
         }
     }
@@ -266,11 +208,8 @@ fun PaymentOption(
 
 @Composable
 fun SummaryRow(label: String, amount: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, fontSize = 14.sp)
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, fontSize = 14.sp, color = Color.Gray)
         Text(amount, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }

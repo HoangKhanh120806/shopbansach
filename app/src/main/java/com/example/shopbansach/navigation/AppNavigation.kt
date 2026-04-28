@@ -26,14 +26,12 @@ fun AppNavigation(
     val authRepository = remember { AuthRepository() }
     val currentUser = FirebaseAuth.getInstance().currentUser
     
-    // Trạng thái xác định màn hình bắt đầu
     var startDestination by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         if (currentUser == null) {
             startDestination = Screen.Login.route
         } else {
-            // Nếu đã đăng nhập, kiểm tra role để quyết định vào Home hay AdminHome
             try {
                 val userData = authRepository.getCurrentUserData()
                 if (userData != null) {
@@ -43,19 +41,16 @@ fun AppNavigation(
                         Screen.Home.route
                     }
                 } else {
-                    // Nếu không tìm thấy data user trong Firestore mặc dù đã login Auth
                     authRepository.logout()
                     startDestination = Screen.Login.route
                 }
             } catch (e: Exception) {
-                // Nếu lỗi khi lấy data user, đăng xuất để tránh kẹt trạng thái
                 authRepository.logout()
                 startDestination = Screen.Login.route
             }
         }
     }
 
-    // Đợi cho đến khi xác định được startDestination
     if (startDestination == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -144,6 +139,19 @@ fun AppNavigation(
 
             composable(route = Screen.AdminUserManage.route) {
                 AdminUserManageScreen(navController = navController)
+            }
+
+            // Route cho Địa chỉ
+            composable(route = Screen.AddressList.route) {
+                AddressListScreen(navController = navController)
+            }
+
+            composable(
+                route = Screen.AddEditAddress.route,
+                arguments = listOf(navArgument("addressId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val addressId = backStackEntry.arguments?.getString("addressId") ?: "new"
+                AddEditAddressScreen(navController = navController, addressId = addressId)
             }
         }
     }

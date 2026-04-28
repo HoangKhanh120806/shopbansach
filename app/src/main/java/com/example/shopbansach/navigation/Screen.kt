@@ -39,4 +39,10 @@ sealed class Screen(val route : String){
     object AdminHome : Screen("admin_home")
     
     object AdminUserManage : Screen("admin_user_manage")
+
+    object AddressList : Screen("address_list")
+    
+    object AddEditAddress : Screen("add_edit_address/{addressId}") {
+        fun createRoute(addressId: String = "new") = "add_edit_address/$addressId"
+    }
 }

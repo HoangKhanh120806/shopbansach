@@ -55,16 +55,25 @@ fun BookDetailScreen(
         viewModel.getBookDetail(bookId)
     }
 
-    // Xử lý thông báo khi thêm vào giỏ hàng
+    // Biến để theo dõi nếu người dùng nhấn "Mua ngay"
+    var isNavigatingToCheckout by remember { mutableStateOf(false) }
+
+    // Xử lý thông báo và điều hướng khi thêm vào giỏ hàng
     LaunchedEffect(cartUiState.actionState) {
         when (cartUiState.actionState) {
             is CartActionState.Success -> {
-                Toast.makeText(context, "Đã thêm vào giỏ hàng!", Toast.LENGTH_SHORT).show()
+                if (isNavigatingToCheckout) {
+                    navController.navigate(Screen.Checkout.route)
+                    isNavigatingToCheckout = false
+                } else {
+                    Toast.makeText(context, "Đã thêm vào giỏ hàng!", Toast.LENGTH_SHORT).show()
+                }
                 cartViewModel.resetActionState()
             }
             is CartActionState.Error -> {
                 Toast.makeText(context, (cartUiState.actionState as CartActionState.Error).message, Toast.LENGTH_SHORT).show()
                 cartViewModel.resetActionState()
+                isNavigatingToCheckout = false
             }
             else -> {}
         }
@@ -98,10 +107,13 @@ fun BookDetailScreen(
                 BottomActionSection(
                     book = uiState.book!!,
                     isAdding = cartUiState.actionState is CartActionState.Loading,
-                    onAddToCart = { cartViewModel.addToCart(uiState.book!!) },
+                    onAddToCart = { 
+                        isNavigatingToCheckout = false
+                        cartViewModel.addToCart(uiState.book!!) 
+                    },
                     onBuyNow = {
+                        isNavigatingToCheckout = true
                         cartViewModel.addToCart(uiState.book!!)
-                        navController.navigate(Screen.Cart.route)
                     }
                 )
             }
@@ -166,7 +178,7 @@ fun BookDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             StatItem(label = "Đánh giá", value = "${book.rating}", icon = Icons.Default.Star, iconColor = Color(0xFFFFB300))
-                            StatItem(label = "Số trang", value = "${book.pages}", icon = Icons.AutoMirrored.Filled.ArrowBack) // Icons.AutoMirrored.Filled.MenuBook causes error in some versions, using ArrowBack as placeholder
+                            StatItem(label = "Số trang", value = "${book.pages}", icon = Icons.AutoMirrored.Filled.ArrowBack) 
                             StatItem(label = "Tồn kho", value = "${book.stock}", icon = Icons.Default.ShoppingCart)
                         }
 
@@ -322,9 +334,14 @@ fun BottomActionSection(book: Book, isAdding: Boolean, onAddToCart: () -> Unit, 
                     .weight(1.5f)
                     .height(50.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                enabled = !isAdding
             ) {
-                Text("MUA NGAY", fontWeight = FontWeight.Bold)
+                if (isAdding) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+                } else {
+                    Text("MUA NGAY", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
