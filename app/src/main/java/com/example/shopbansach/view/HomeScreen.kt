@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.HomeViewModel
@@ -50,17 +52,23 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item { HomeHeader(navController) }
-            item { StorySlideSection(uiState.featuredBooks, navController) }
-            item { NewArrivalsHeader() }
-            items(uiState.newArrivals) { book ->
-                NewArrivalItem(book, navController)
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                item { HomeHeader(navController) }
+                item { StorySlideSection(uiState.featuredBooks, navController) }
+                item { NewArrivalsHeader() }
+                items(uiState.newArrivals) { book ->
+                    NewArrivalItem(book, navController)
+                }
             }
         }
     }
@@ -172,14 +180,23 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                 .height(230.dp)
                 .shadow(8.dp, RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Text(
-                "COVER",
-                modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                fontWeight = FontWeight.Bold
-            )
+            if (!book.imageUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = book.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Text(
+                    "COVER",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
         Spacer(modifier = Modifier.height(12.dp))
         Text(
@@ -236,7 +253,16 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                     .size(60.dp, 85.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
+            ) {
+                if (!book.imageUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = book.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

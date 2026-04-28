@@ -25,16 +25,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
-import com.example.shopbansach.data.repository.BookRepository
+import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.viewmodel.MyShopViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyShopScreen(navController: NavController) {
-    val repository = remember { BookRepository() }
-    val myBooks = remember { repository.getFeaturedBooks() } // Tạm thời lấy featured books làm sách của tôi
+fun MyShopScreen(
+    navController: NavController,
+    viewModel: MyShopViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -63,7 +67,7 @@ fun MyShopScreen(navController: NavController) {
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { /* TODO: Điều hướng sang trang thêm sách mới */ },
+                onClick = { navController.navigate(Screen.AddBook.route) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(16.dp),
@@ -73,31 +77,43 @@ fun MyShopScreen(navController: NavController) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(24.dp)
-        ) {
-            // Header: Thông tin shop
-            item {
-                ShopHeaderSection()
-                Spacer(modifier = Modifier.height(32.dp))
-                Text(
-                    text = "Sách đang bán (${myBooks.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(24.dp)
+            ) {
+                item {
+                    ShopHeaderSection()
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Text(
+                        text = "Sách đang bán (${uiState.myBooks.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
-            // Danh sách sách của shop
-            items(myBooks) { book ->
-                MyProductItem(book = book, onEdit = {
-                    // TODO: Điều hướng sang trang sửa sách
-                })
-                Spacer(modifier = Modifier.height(16.dp))
+                if (uiState.myBooks.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                            Text("Bạn chưa đăng bán cuốn sách nào", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    items(uiState.myBooks) { book ->
+                        MyProductItem(book = book, onEdit = {
+                            // TODO: Điều hướng sang trang sửa sách
+                        })
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
             }
         }
     }
@@ -160,21 +176,24 @@ fun MyProductItem(book: Book, onEdit: () -> Unit) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ảnh sách
             Box(
                 modifier = Modifier
                     .size(60.dp, 85.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                if (book.imageRes != null) {
-                    // AsyncImage code here
+                if (!book.imageUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = book.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Thông tin
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = book.title,
@@ -190,14 +209,8 @@ fun MyProductItem(book: Book, onEdit: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 14.sp
                 )
-                Text(
-                    text = "Kho: 24 quyển",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
-            // Nút sửa
             IconButton(
                 onClick = onEdit,
                 colors = IconButtonDefaults.iconButtonColors(

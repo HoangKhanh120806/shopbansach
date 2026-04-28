@@ -28,23 +28,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.repository.CloudinaryRepository
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import com.example.shopbansach.viewmodel.BookActionState
+import com.example.shopbansach.viewmodel.BookViewModel
+import com.example.shopbansach.viewmodel.factory.BookViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddBookScreen(navController: NavController) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val cloudinaryRepository = remember { CloudinaryRepository(context) }
-    val firestore = FirebaseFirestore.getInstance()
-    val auth = FirebaseAuth.getInstance()
+    
+    // Khởi tạo ViewModel với Factory vì cần truyền Context cho CloudinaryRepository
+    val viewModel: BookViewModel = viewModel(
+        factory = BookViewModelFactory(CloudinaryRepository(context))
+    )
+    
+    val actionState by viewModel.actionState.collectAsState()
 
     var title by remember { mutableStateOf("") }
     var author by remember { mutableStateOf("") }
@@ -52,12 +54,27 @@ fun AddBookScreen(navController: NavController) {
     var pages by remember { mutableStateOf("") }
     var synopsis by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var isUploading by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         selectedImageUri = uri
+    }
+
+    // Xử lý kết quả từ ViewModel
+    LaunchedEffect(actionState) {
+        when (actionState) {
+            is BookActionState.Success -> {
+                Toast.makeText(context, "Đăng bán thành công!", Toast.LENGTH_SHORT).show()
+                viewModel.resetState()
+                navController.popBackStack()
+            }
+            is BookActionState.Error -> {
+                Toast.makeText(context, (actionState as BookActionState.Error).message, Toast.LENGTH_SHORT).show()
+                viewModel.resetState()
+            }
+            else -> {}
+        }
     }
 
     Scaffold(
@@ -168,51 +185,13 @@ fun AddBookScreen(navController: NavController) {
             // Nút đăng bán
             Button(
                 onClick = {
-                    if (title.isEmpty() || price.isEmpty() || selectedImageUri == null) {
-                        Toast.makeText(context, "Vui lòng nhập đầy đủ và chọn ảnh", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    
-                    isUploading = true
-                    scope.launch {
-                        try {
-                            // 1. Upload ảnh lên Cloudinary
-                            val uploadResult = cloudinaryRepository.uploadImage(selectedImageUri!!)
-                            if (uploadResult.isSuccess) {
-                                val imageUrl = uploadResult.getOrNull()
-                                
-                                // 2. Lưu vào Firestore
-                                val bookId = firestore.collection("books").document().id
-                                val newBook = Book(
-                                    id = bookId,
-                                    title = title,
-                                    author = author,
-                                    price = "${price}đ",
-                                    pages = pages.toIntOrNull() ?: 0,
-                                    synopsis = synopsis,
-                                    imageUrl = imageUrl,
-                                    ownerId = auth.currentUser?.uid ?: ""
-                                )
-                                
-                                firestore.collection("books").document(bookId).set(newBook).await()
-                                
-                                Toast.makeText(context, "Đăng bán thành công!", Toast.LENGTH_SHORT).show()
-                                navController.popBackStack()
-                            } else {
-                                Toast.makeText(context, "Lỗi upload ảnh", Toast.LENGTH_SHORT).show()
-                            }
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
-                        } finally {
-                            isUploading = false
-                        }
-                    }
+                    viewModel.addBook(title, author, price, pages, synopsis, selectedImageUri)
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = !isUploading
+                enabled = actionState !is BookActionState.Loading
             ) {
-                if (isUploading) {
+                if (actionState is BookActionState.Loading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
                     Icon(Icons.Default.CloudUpload, contentDescription = null)
