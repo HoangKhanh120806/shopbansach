@@ -84,7 +84,7 @@ fun AdminHomeScreen(navController: NavController) {
 
             // Danh sách các chức năng admin
             val adminFunctions = listOf(
-                AdminFunction("Quản lý Sách", Icons.Default.Book, Color(0xFF4CAF50), ""),
+                AdminFunction("Quản lý Sách", Icons.Default.Book, Color(0xFF4CAF50), Screen.AdminBookManage.route),
                 AdminFunction("Quản lý Người dùng", Icons.Default.People, Color(0xFF2196F3), Screen.AdminUserManage.route),
                 AdminFunction("Quản lý Đơn hàng", Icons.Default.ShoppingBag, Color(0xFFFF9800), ""),
                 AdminFunction("Thống kê", Icons.Default.Dashboard, Color(0xFF9C27B0), "")
@@ -121,7 +121,7 @@ fun AdminCard(function: AdminFunction, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
-            .clickable { onClick() }, // Đã thêm sự kiện click ở đây
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

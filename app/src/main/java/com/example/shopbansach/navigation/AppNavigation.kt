@@ -155,6 +155,10 @@ fun AppNavigation(
             composable(route = Screen.AdminUserManage.route) {
                 AdminUserManageScreen(navController = navController)
             }
+            
+            composable(route = Screen.AdminBookManage.route) {
+                AdminBookManageScreen(navController = navController)
+            }
 
             // Route cho Địa chỉ
             composable(route = Screen.AddressList.route) {
