@@ -2,10 +2,14 @@ package com.example.shopbansach.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.shopbansach.data.model.Address
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.CartItem
+import com.example.shopbansach.data.model.Order
 import com.example.shopbansach.data.repository.CartRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import com.example.shopbansach.data.repository.OrderRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +32,8 @@ data class CartUiState(
 
 class CartViewModel(
     private val repository: CartRepository = CartRepository(),
-    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository()
+    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository(),
+    private val orderRepository: OrderRepository = OrderRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CartUiState())
@@ -151,13 +156,22 @@ class CartViewModel(
     }
 
     /**
-     * Xử lý thanh toán an toàn: Kiểm tra tồn kho trước khi trừ
+     * Xử lý thanh toán an toàn: Kiểm tra tồn kho, trừ kho và LƯU ĐƠN HÀNG
      */
-    fun processCheckout(checkoutItems: List<CartItem>, isBuyNow: Boolean, onComplete: () -> Unit) {
+    fun processCheckout(
+        checkoutItems: List<CartItem>,
+        isBuyNow: Boolean,
+        address: Address,
+        paymentMethod: String,
+        totalPrice: Long,
+        onComplete: () -> Unit
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Duyệt qua từng sản phẩm để cập nhật tồn kho bằng Transaction
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: throw Exception("Chưa đăng nhập")
+
+                // 1. Kiểm tra và cập nhật tồn kho (Transaction)
                 for (item in checkoutItems) {
                     val result = bookRepository.updateStockWithCheck(item.bookId, item.quantity)
                     if (result.isFailure) {
@@ -165,6 +179,21 @@ class CartViewModel(
                     }
                 }
 
+                // 2. Tạo đơn hàng mới
+                val newOrder = Order(
+                    userId = currentUserId,
+                    items = checkoutItems,
+                    totalPrice = totalPrice,
+                    shippingAddress = address,
+                    paymentMethod = paymentMethod
+                )
+                
+                val orderResult = orderRepository.createOrder(newOrder)
+                if (orderResult.isFailure) {
+                    throw orderResult.exceptionOrNull() ?: Exception("Lỗi khi tạo đơn hàng")
+                }
+
+                // 3. Dọn dẹp giỏ hàng nếu không phải là mua ngay
                 if (!isBuyNow) {
                     repository.clearSelectedItems()
                     loadCartItems()

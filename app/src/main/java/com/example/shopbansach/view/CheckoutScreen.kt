@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.shopbansach.data.model.Address
 import com.example.shopbansach.data.model.CartItem
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.ui.auth.AuthColors
@@ -132,7 +133,15 @@ fun CheckoutScreen(
                         } else {
                             cartViewModel.processCheckout(
                                 checkoutItems = checkoutItems,
-                                isBuyNow = buyNowBookId != null
+                                isBuyNow = buyNowBookId != null,
+                                address = Address(
+                                    fullName = fullName,
+                                    phoneNumber = phoneNumber,
+                                    addressDetail = addressDetail,
+                                    city = city
+                                ),
+                                paymentMethod = selectedPayment,
+                                totalPrice = total
                             ) {
                                 navController.navigate(Screen.ThankYou.route) {
                                     popUpTo(Screen.Home.route)

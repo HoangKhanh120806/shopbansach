@@ -148,7 +148,7 @@ fun ProfileScreen(
                             ProfileMenuItem(
                                 icon = Icons.Default.History,
                                 title = "Lịch sử đơn hàng",
-                                onClick = { /* TODO */ }
+                                onClick = { navController.navigate(Screen.OrderHistory.route) }
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
                             

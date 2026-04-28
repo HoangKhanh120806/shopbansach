@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,47 +51,66 @@ fun AdminUserManageScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                uiState.errorMessage != null -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Lỗi: ${uiState.errorMessage}",
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadUsers() }) {
-                            Text("Thử lại")
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Thanh tìm kiếm
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = { viewModel.onSearchQueryChange(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Tìm theo tên hoặc email...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                    uiState.errorMessage != null -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "Lỗi: ${uiState.errorMessage}",
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.loadUsers() }) {
+                                Text("Thử lại")
+                            }
                         }
                     }
-                }
-                uiState.users.isEmpty() -> {
-                    Text(
-                        text = "Danh sách người dùng trống",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.users) { user ->
-                            UserAdminItem(
-                                user = user,
-                                onChangeRole = { newRole -> viewModel.changeUserRole(user.id, newRole) },
-                                onDelete = { viewModel.deleteUser(user.id) }
-                            )
+                    uiState.filteredUsers.isEmpty() -> {
+                        Text(
+                            text = if (uiState.searchQuery.isEmpty()) "Danh sách người dùng trống" else "Không tìm thấy người dùng phù hợp",
+                            modifier = Modifier.align(Alignment.Center),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(uiState.filteredUsers) { user ->
+                                UserAdminItem(
+                                    user = user,
+                                    onChangeRole = { newRole -> viewModel.changeUserRole(user.id, newRole) },
+                                    onDelete = { viewModel.deleteUser(user.id) }
+                                )
+                            }
                         }
                     }
                 }
@@ -106,6 +126,7 @@ fun UserAdminItem(
     onDelete: () -> Unit
 ) {
     var showRoleDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -171,16 +192,11 @@ fun UserAdminItem(
 
             // Actions
             Row {
-                // Chỉ cho phép đổi quyền nếu user không phải là ADMIN
                 if (user.role != UserRole.ADMIN) {
                     IconButton(onClick = { showRoleDialog = true }) {
                         Icon(Icons.Default.Shield, contentDescription = "Change Role", tint = MaterialTheme.colorScheme.primary)
                     }
-                }
-                
-                // Chỉ cho phép xóa nếu user không phải là ADMIN
-                if (user.role != UserRole.ADMIN) {
-                    IconButton(onClick = onDelete) {
+                    IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                     }
                 }
@@ -195,7 +211,6 @@ fun UserAdminItem(
             text = { Text("Chọn vai trò mới cho người dùng ${user.name}") },
             confirmButton = {
                 Column {
-                    // Chỉ hiển thị USER và SELLER, không cho phép chọn ADMIN
                     listOf(UserRole.USER, UserRole.SELLER).forEach { role ->
                         TextButton(
                             onClick = {
@@ -211,6 +226,30 @@ fun UserAdminItem(
             },
             dismissButton = {
                 TextButton(onClick = { showRoleDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Xác nhận xóa") },
+            text = { Text("Bạn có chắc chắn muốn xóa người dùng ${user.name}? Hành động này sẽ xóa toàn bộ dữ liệu (sách, địa chỉ) của họ.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirm = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
                     Text("Hủy")
                 }
             }

@@ -94,6 +94,7 @@ class FirebaseBookRepository {
 
     /**
      * Lưu sách an toàn: Kiểm tra quyền sở hữu nếu là cập nhật
+     * Sử dụng update để tránh mất dữ liệu rating/soldCount
      */
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
@@ -106,9 +107,25 @@ class FirebaseBookRepository {
                 if (ownerId != currentUserId) {
                     throw Exception("Bạn không có quyền chỉnh sửa sách này")
                 }
+                
+                // Cập nhật từng trường để tránh ghi đè các trường khác (như rating)
+                val updates = mapOf(
+                    "title" to book.title,
+                    "titleLowercase" to book.title.lowercase(Locale.ROOT),
+                    "author" to book.author,
+                    "price" to book.price,
+                    "pages" to book.pages,
+                    "synopsis" to book.synopsis,
+                    "imageUrl" to book.imageUrl,
+                    "category" to book.category,
+                    "stock" to book.stock
+                ).filter { it.value != null }
+                
+                docRef.update(updates).await()
+            } else {
+                // Nếu sách mới, dùng set
+                docRef.set(book).await()
             }
-            
-            docRef.set(book).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

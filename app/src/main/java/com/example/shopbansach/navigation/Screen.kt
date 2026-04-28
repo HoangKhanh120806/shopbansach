@@ -44,6 +44,8 @@ sealed class Screen(val route : String){
     object AdminUserManage : Screen("admin_user_manage")
     
     object AdminBookManage : Screen("admin_book_manage")
+    
+    object AdminOrderManage : Screen("admin_order_manage")
 
     object AddressList : Screen("address_list")
     
@@ -54,4 +56,6 @@ sealed class Screen(val route : String){
     object SellerShop : Screen("seller_shop/{sellerId}") {
         fun createRoute(sellerId: String) = "seller_shop/$sellerId"
     }
+
+    object OrderHistory : Screen("order_history")
 }

@@ -166,14 +166,37 @@ class AuthRepository {
 
     suspend fun deleteAccount(): Result<Unit> {
         return try {
-            val user = auth.currentUser ?: throw Exception("No user logged in")
+            val user = auth.currentUser ?: throw Exception("Chưa đăng nhập")
             val userId = user.uid
-            firestore.collection("users").document(userId).delete().await()
+            
+            // Dọn dẹp data trước khi xóa auth
+            cleanUpUserData(userId)
+
             user.delete().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private suspend fun cleanUpUserData(userId: String) {
+        val batch = firestore.batch()
+
+        // 1. Xóa sách
+        val booksSnapshot = firestore.collection("books").whereEqualTo("ownerId", userId).get().await()
+        for (doc in booksSnapshot.documents) batch.delete(doc.reference)
+
+        // 2. Xóa địa chỉ & giỏ hàng
+        val addressesSnapshot = firestore.collection("users").document(userId).collection("addresses").get().await()
+        for (doc in addressesSnapshot.documents) batch.delete(doc.reference)
+
+        val cartSnapshot = firestore.collection("users").document(userId).collection("cart").get().await()
+        for (doc in cartSnapshot.documents) batch.delete(doc.reference)
+
+        // 3. Xóa document user
+        batch.delete(firestore.collection("users").document(userId))
+
+        batch.commit().await()
     }
 
     suspend fun getAllUsers(): List<User> {
@@ -184,7 +207,7 @@ class AuthRepository {
     suspend fun updateUserRole(userId: String, newRole: UserRole): Result<Unit> {
         return try {
             firestore.collection("users").document(userId)
-                .update("role", newRole)
+                .update("role", newRole.name) // Sử dụng .name để Firestore lưu dạng String chuẩn
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -194,7 +217,8 @@ class AuthRepository {
 
     suspend fun deleteUserByAdmin(userId: String): Result<Unit> {
         return try {
-            firestore.collection("users").document(userId).delete().await()
+            // Admin chỉ xóa được data trên Firestore (không xóa được tài khoản Auth của người khác từ client SDK)
+            cleanUpUserData(userId)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
