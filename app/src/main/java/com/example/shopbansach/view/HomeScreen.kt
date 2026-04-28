@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.User
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.HomeViewModel
 
@@ -63,7 +64,7 @@ fun HomeScreen(
                     .padding(padding),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                item { HomeHeader(navController) }
+                item { HomeHeader(navController, uiState.currentUser) }
                 item { StorySlideSection(uiState.featuredBooks, navController) }
                 item { NewArrivalsHeader() }
                 items(uiState.newArrivals) { book ->
@@ -75,7 +76,7 @@ fun HomeScreen(
 }
 
 @Composable
-fun HomeHeader(navController: NavController) {
+fun HomeHeader(navController: NavController, currentUser: User?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -94,7 +95,7 @@ fun HomeHeader(navController: NavController) {
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Thế giới sách trong tầm tay",
+                text = currentUser?.let { "Chào mừng, ${it.name}" } ?: "Thế giới sách trong tầm tay",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -119,11 +120,20 @@ fun HomeHeader(navController: NavController) {
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Person, 
-                    contentDescription = null, 
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                if (!currentUser?.avatarUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = currentUser?.avatarUrl,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Person, 
+                        contentDescription = null, 
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
