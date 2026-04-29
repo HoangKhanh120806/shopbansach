@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +20,6 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,20 +30,14 @@ import androidx.navigation.NavController
 import com.example.shopbansach.data.model.Address
 import com.example.shopbansach.data.model.CartItem
 import com.example.shopbansach.navigation.Screen
-import com.example.shopbansach.ui.auth.AuthColors
+import com.example.shopbansach.utils.CurrencyUtils
+import com.example.shopbansach.utils.CustomCard
+import com.example.shopbansach.utils.PrimaryButton
+import com.example.shopbansach.utils.SharedTopAppBar
 import com.example.shopbansach.viewmodel.AddressViewModel
 import com.example.shopbansach.viewmodel.BookDetailViewModel
 import com.example.shopbansach.viewmodel.CartViewModel
-import java.text.NumberFormat
-import java.util.Locale
 
-// Helper function for currency formatting
-fun formatPrice(price: Long): String {
-    val formatter = NumberFormat.getInstance(Locale("vi", "VN"))
-    return "${formatter.format(price)}đ"
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutScreen(
     navController: NavController,
@@ -121,32 +113,34 @@ fun CheckoutScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Thanh toán", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AuthColors.Background)
+            SharedTopAppBar(
+                title = "Thanh toán",
+                onBackClick = { navController.popBackStack() }
             )
         },
         bottomBar = {
             Surface(
-                color = AuthColors.Background, 
+                color = MaterialTheme.colorScheme.surface, 
                 tonalElevation = 8.dp,
-                shadowElevation = 10.dp
+                shadowElevation = 16.dp,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
+                Column(modifier = Modifier.padding(24.dp).navigationBarsPadding()) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Tổng thanh toán", fontWeight = FontWeight.Medium)
-                        Text(formatPrice(total), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
+                        Text("Tổng thanh toán", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            CurrencyUtils.formatPrice(total), 
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold, 
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                    Button(
+                    PrimaryButton(
+                        text = "Đặt hàng ngay",
                         onClick = {
                             if (fullName.isEmpty() || phoneNumber.isEmpty() || addressDetail.isEmpty()) {
                                 Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin giao hàng", Toast.LENGTH_SHORT).show()
@@ -169,21 +163,13 @@ fun CheckoutScreen(
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        enabled = checkoutItems.isNotEmpty() && !cartUiState.isLoading,
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        if (cartUiState.isLoading) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                        } else {
-                            Text("Đặt hàng ngay", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                        isLoading = cartUiState.isLoading,
+                        enabled = checkoutItems.isNotEmpty()
+                    )
                 }
             }
         },
-        containerColor = AuthColors.Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (buyNowBookId != null && bookUiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -191,7 +177,11 @@ fun CheckoutScreen(
             }
         } else {
             Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp).verticalScroll(rememberScrollState())
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -226,32 +216,29 @@ fun CheckoutScreen(
 
                 // Chi tiết hóa đơn
                 SectionTitle("Chi tiết đơn hàng")
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(0.5.dp, Color.LightGray.copy(alpha = 0.5f))
+                CustomCard(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         checkoutItems.forEach { item ->
                             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.title, maxLines = 1, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                    Text("${item.quantity} x ${formatPrice(item.price)}", fontSize = 12.sp, color = Color.Gray)
+                                    Text("${item.quantity} x ${CurrencyUtils.formatPrice(item.price)}", fontSize = 12.sp, color = Color.Gray)
                                 }
-                                Text(formatPrice(item.price * item.quantity), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                Text(CurrencyUtils.formatPrice(item.price * item.quantity), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                         
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
                         
-                        SummaryRow("Tạm tính", formatPrice(subtotal))
-                        SummaryRow("Phí vận chuyển", formatPrice(shipping))
+                        SummaryRow("Tạm tính", CurrencyUtils.formatPrice(subtotal))
+                        SummaryRow("Phí vận chuyển", CurrencyUtils.formatPrice(shipping))
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Thành tiền", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(formatPrice(total), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                            Text(CurrencyUtils.formatPrice(total), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -283,8 +270,8 @@ fun CheckoutTextField(value: String, onValueChange: (String) -> Unit, placeholde
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = Color.White,
-            focusedContainerColor = Color.White
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedContainerColor = MaterialTheme.colorScheme.surface
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(onAny = { onAction() })
@@ -298,7 +285,7 @@ fun PaymentOption(selected: Boolean, onClick: () -> Unit, icon: @Composable () -
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f)),
         modifier = Modifier.padding(vertical = 4.dp).fillMaxWidth(),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else Color.White
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = selected, onClick = onClick)

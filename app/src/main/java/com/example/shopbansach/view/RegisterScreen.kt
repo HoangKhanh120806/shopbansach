@@ -56,21 +56,28 @@ fun RegisterScreen(
             .padding(24.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(80.dp))
 
         Text(
             text = "Cozy Reads",
-            style = MaterialTheme.typography.displaySmall.copy(
+            style = MaterialTheme.typography.displayMedium.copy(
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.ExtraBold
             ),
             color = MaterialTheme.colorScheme.primary
         )
 
+        Text(
+            text = "Bắt đầu hành trình đọc sách của bạn",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            modifier = Modifier.padding(top = 8.dp)
+        )
+
         Spacer(modifier = Modifier.height(48.dp))
 
         Text(
-            text = "Tạo tài khoản mới",
+            text = "Đăng ký tài khoản",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Serif
@@ -78,7 +85,7 @@ fun RegisterScreen(
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         AuthTextField(
             value = name,
@@ -107,18 +114,13 @@ fun RegisterScreen(
             onValueChange = { password = it }
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
-        if (authState is AuthState.Loading) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
-        } else {
-            AuthButton(
-                text = "Đăng ký",
-                onClick = { viewModel.register(name, email, password) }
-            )
-        }
+        AuthButton(
+            text = "Đăng ký ngay",
+            onClick = { viewModel.register(name, email, password) },
+            isLoading = authState is AuthState.Loading
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
