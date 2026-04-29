@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.Constants
 import com.example.shopbansach.data.repository.CloudinaryRepository
 import com.example.shopbansach.viewmodel.BookActionState
 import com.example.shopbansach.viewmodel.BookDetailViewModel
@@ -72,7 +72,6 @@ fun EditBookScreen(
     var rating by remember { mutableStateOf(0.0) }
     
     var expanded by remember { mutableStateOf(false) }
-    val categories = listOf("Văn học", "Kinh tế", "Tâm lý", "Kỹ năng sống", "Thiếu nhi", "Ngoại ngữ", "Khác")
 
     LaunchedEffect(bookId) {
         detailViewModel.getBookDetail(bookId)
@@ -124,10 +123,7 @@ fun EditBookScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -146,7 +142,6 @@ fun EditBookScreen(
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Modern Image Picker Section
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -167,7 +162,6 @@ fun EditBookScreen(
                         AsyncImage(model = existingImageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
                     
-                    // Overlay icon to indicate edit
                     Surface(
                         modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
                         shape = CircleShape,
@@ -185,7 +179,6 @@ fun EditBookScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Form Fields with consistent style
                 Text("Thông tin cơ bản", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -218,7 +211,7 @@ fun EditBookScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
                     ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        categories.forEach { cat ->
+                        Constants.BOOK_CATEGORIES.forEach { cat ->
                             DropdownMenuItem(
                                 text = { Text(cat) }, 
                                 onClick = { 
@@ -314,10 +307,7 @@ fun EditBookScreen(
                             rating = rating
                         )
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .shadow(8.dp, RoundedCornerShape(16.dp)),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     enabled = actionState !is BookActionState.Loading
                 ) {
@@ -326,7 +316,7 @@ fun EditBookScreen(
                     } else {
                         Icon(Icons.Default.Save, contentDescription = null)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("CẬP NHẬT SẢN PHẨM", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        Text("CẬP NHẬT SẢN PHẨM", fontWeight = FontWeight.Bold)
                     }
                 }
                 Spacer(modifier = Modifier.height(48.dp))

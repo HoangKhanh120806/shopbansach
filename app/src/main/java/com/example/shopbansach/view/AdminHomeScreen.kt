@@ -69,24 +69,23 @@ fun AdminHomeScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Chào mừng trở lại, Admin",
+                text = "Chào Admin!",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Dưới đây là các chức năng quản lý hệ thống",
+                text = "Hệ thống đang hoạt động ổn định",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Danh sách các chức năng admin
             val adminFunctions = listOf(
                 AdminFunction("Quản lý Sách", Icons.Default.Book, Color(0xFF4CAF50), Screen.AdminBookManage.route),
                 AdminFunction("Quản lý Người dùng", Icons.Default.People, Color(0xFF2196F3), Screen.AdminUserManage.route),
-                AdminFunction("Quản lý Đơn hàng", Icons.Default.ShoppingBag, Color(0xFFFF9800), ""),
+                AdminFunction("Quản lý Đơn hàng", Icons.Default.ShoppingBag, Color(0xFFFF9800), Screen.AdminOrderManage.route),
                 AdminFunction("Thống kê", Icons.Default.Dashboard, Color(0xFF9C27B0), "")
             )
 

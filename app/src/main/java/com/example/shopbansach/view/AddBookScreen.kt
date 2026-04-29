@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.shopbansach.data.model.Constants
 import com.example.shopbansach.data.repository.CloudinaryRepository
 import com.example.shopbansach.viewmodel.BookActionState
 import com.example.shopbansach.viewmodel.BookViewModel
@@ -46,7 +47,6 @@ fun AddBookScreen(navController: NavController) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     
-    // Khởi tạo ViewModel với Factory vì cần truyền Context cho CloudinaryRepository
     val viewModel: BookViewModel = viewModel(
         factory = BookViewModelFactory(CloudinaryRepository(context))
     )
@@ -59,11 +59,10 @@ fun AddBookScreen(navController: NavController) {
     var pages by remember { mutableStateOf("") }
     var stock by remember { mutableStateOf("") }
     var synopsis by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Văn học") }
+    var category by remember { mutableStateOf(Constants.BOOK_CATEGORIES.first()) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     
     var expanded by remember { mutableStateOf(false) }
-    val categories = listOf("Văn học", "Kinh tế", "Tâm lý", "Kỹ năng sống", "Thiếu nhi", "Ngoại ngữ", "Khác")
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -71,19 +70,14 @@ fun AddBookScreen(navController: NavController) {
         selectedImageUri = uri
     }
 
-    // Xử lý kết quả từ ViewModel
     LaunchedEffect(actionState) {
-        when (actionState) {
-            is BookActionState.Success -> {
-                Toast.makeText(context, "Đăng bán thành công!", Toast.LENGTH_SHORT).show()
-                viewModel.resetState()
-                navController.popBackStack()
-            }
-            is BookActionState.Error -> {
-                Toast.makeText(context, (actionState as BookActionState.Error).message, Toast.LENGTH_SHORT).show()
-                viewModel.resetState()
-            }
-            else -> {}
+        if (actionState is BookActionState.Success) {
+            Toast.makeText(context, "Đăng bán thành công!", Toast.LENGTH_SHORT).show()
+            viewModel.resetState()
+            navController.popBackStack()
+        } else if (actionState is BookActionState.Error) {
+            Toast.makeText(context, (actionState as BookActionState.Error).message, Toast.LENGTH_SHORT).show()
+            viewModel.resetState()
         }
     }
 
@@ -95,10 +89,7 @@ fun AddBookScreen(navController: NavController) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -113,7 +104,6 @@ fun AddBookScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Ảnh bìa sách
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,13 +122,7 @@ fun AddBookScreen(navController: NavController) {
                     )
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.AddPhotoAlternate,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Icon(Icons.Default.AddPhotoAlternate, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
                         Text("Tải lên ảnh bìa", color = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -146,7 +130,6 @@ fun AddBookScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Form nhập liệu
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -159,7 +142,6 @@ fun AddBookScreen(navController: NavController) {
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Category Dropdown
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded },
@@ -174,11 +156,8 @@ fun AddBookScreen(navController: NavController) {
                     modifier = Modifier.menuAnchor().fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    categories.forEach { selectionOption ->
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    Constants.BOOK_CATEGORIES.forEach { selectionOption ->
                         DropdownMenuItem(
                             text = { Text(selectionOption) },
                             onClick = {
@@ -199,8 +178,7 @@ fun AddBookScreen(navController: NavController) {
                 label = { Text("Tác giả") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -211,7 +189,6 @@ fun AddBookScreen(navController: NavController) {
                 label = { Text("Giá (VNĐ)") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                 shape = RoundedCornerShape(12.dp)
             )
             
@@ -224,16 +201,14 @@ fun AddBookScreen(navController: NavController) {
                     label = { Text("Số trang") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Right) }),
                     shape = RoundedCornerShape(12.dp)
                 )
                 OutlinedTextField(
                     value = stock,
                     onValueChange = { stock = it },
-                    label = { Text("Số lượng tồn kho") },
+                    label = { Text("Tồn kho") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                     shape = RoundedCornerShape(12.dp)
                 )
             }
@@ -246,13 +221,11 @@ fun AddBookScreen(navController: NavController) {
                 label = { Text("Tóm tắt nội dung") },
                 modifier = Modifier.fillMaxWidth().height(120.dp),
                 shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Nút đăng bán
             Button(
                 onClick = {
                     viewModel.saveBook(
@@ -273,12 +246,11 @@ fun AddBookScreen(navController: NavController) {
                 if (actionState is BookActionState.Loading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Icon(Icons.Default.CloudUpload, contentDescription = null)
+                    Icon(Icons.Default.CloudUpload, null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Đăng bán sách ngay", fontSize = 16.sp)
+                    Text("Đăng bán sách", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
