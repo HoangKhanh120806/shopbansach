@@ -32,9 +32,9 @@ import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.repository.CloudinaryRepository
 import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.MyShopViewModel
 import com.example.shopbansach.viewmodel.factory.MyShopViewModelFactory
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -316,7 +316,7 @@ fun ShopStatsSection(revenue: Long, sold: Int) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Doanh thu", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text(
-                    text = String.format(Locale.US, "%,d VND", revenue),
+                    text = CurrencyUtils.formatPriceWithVND(revenue),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -383,7 +383,7 @@ fun MyProductItem(book: Book, onEdit: () -> Unit, onDelete: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = String.format(Locale.US, "%,d VND", book.price),
+                    text = CurrencyUtils.formatPriceWithVND(book.price),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 14.sp

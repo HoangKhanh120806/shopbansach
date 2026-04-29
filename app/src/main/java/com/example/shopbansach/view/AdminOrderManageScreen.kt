@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shopbansach.data.model.Constants
 import com.example.shopbansach.data.model.Order
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.AdminOrderViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -136,7 +137,7 @@ fun AdminOrderItemCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = "Tổng tiền:", fontWeight = FontWeight.Bold)
                 Text(
-                    text = String.format(Locale.US, "%,dđ", order.totalPrice),
+                    text = CurrencyUtils.formatPrice(order.totalPrice),
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
                 )

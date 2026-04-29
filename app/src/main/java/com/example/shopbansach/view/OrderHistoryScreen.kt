@@ -26,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Order
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.OrderViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -199,7 +200,7 @@ fun OrderItemCard(order: Order) {
             ) {
                 Text("Tổng thanh toán:", fontSize = 14.sp)
                 Text(
-                    text = String.format(Locale.US, "%,dđ", order.totalPrice),
+                    text = CurrencyUtils.formatPrice(order.totalPrice),
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.primary

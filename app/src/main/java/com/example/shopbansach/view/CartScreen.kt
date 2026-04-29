@@ -29,8 +29,8 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.CartItem
 import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.CartViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,7 +126,7 @@ fun CartScreen(
                             Column {
                                 Text("Tổng thanh toán (${selectedItems.size})", style = MaterialTheme.typography.labelMedium)
                                 Text(
-                                    String.format(Locale.US, "%,dđ", subtotal + shipping),
+                                    CurrencyUtils.formatPrice(subtotal + shipping),
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.primary
@@ -238,7 +238,7 @@ fun CartItemCard(
                 Text(text = item.author, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 
                 Text(
-                    text = String.format(Locale.US, "%,dđ", item.price),
+                    text = CurrencyUtils.formatPrice(item.price),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
@@ -291,15 +291,15 @@ fun OrderSummarySection(subtotal: Long, shipping: Long) {
         Text("Tóm tắt (Sản phẩm đã chọn)", fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = FontFamily.Serif)
         Spacer(modifier = Modifier.height(12.dp))
         
-        SummaryDetailRow("Tiền hàng", String.format(Locale.US, "%,dđ", subtotal))
-        SummaryDetailRow("Phí vận chuyển", String.format(Locale.US, "%,dđ", shipping))
+        SummaryDetailRow("Tiền hàng", CurrencyUtils.formatPrice(subtotal))
+        SummaryDetailRow("Phí vận chuyển", CurrencyUtils.formatPrice(shipping))
         
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
         
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Tổng cộng", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(
-                String.format(Locale.US, "%,dđ", subtotal + shipping), 
+                CurrencyUtils.formatPrice(subtotal + shipping),
                 fontWeight = FontWeight.ExtraBold, 
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.primary

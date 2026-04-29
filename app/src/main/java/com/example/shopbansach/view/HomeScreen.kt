@@ -31,8 +31,8 @@ import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.HomeViewModel
-import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -308,7 +308,7 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                 }
             }
             Text(
-                text = String.format(Locale.US, "%,d VND", book.price),
+                text = CurrencyUtils.formatPriceWithVND(book.price),
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.tertiary,
                 fontSize = 15.sp

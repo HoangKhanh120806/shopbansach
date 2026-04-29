@@ -37,10 +37,10 @@ import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.BookDetailViewModel
 import com.example.shopbansach.viewmodel.CartActionState
 import com.example.shopbansach.viewmodel.CartViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -325,7 +325,7 @@ fun QuantitySelectionContent(
             Column {
                 Text(book.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    text = String.format(Locale.US, "%,dđ", book.price),
+                    text = CurrencyUtils.formatPrice(book.price),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
@@ -452,7 +452,7 @@ fun BottomActionSection(book: Book, isAdding: Boolean, onAddToCart: () -> Unit, 
             Column(modifier = Modifier.weight(1f)) {
                 Text("Giá bán", style = MaterialTheme.typography.labelMedium)
                 Text(
-                    text = String.format(Locale.US, "%,dđ", book.price),
+                    text = CurrencyUtils.formatPrice(book.price),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
@@ -518,7 +518,7 @@ fun RelatedBookCard(book: Book, onClick: () -> Unit) {
             modifier = Modifier.padding(top = 8.dp)
         )
         Text(
-            text = String.format(Locale.US, "%,dđ", book.price),
+            text = CurrencyUtils.formatPrice(book.price),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold

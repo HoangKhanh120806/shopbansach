@@ -47,8 +47,27 @@ class CartViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val items = repository.getCartItems()
-                _uiState.update { it.copy(cartItems = items, isLoading = false) }
+                val rawCartItems = repository.getCartItems()
+                val validatedItems = mutableListOf<CartItem>()
+
+                for (item in rawCartItems) {
+                    // Kiểm tra xem sách có còn tồn tại trong hệ thống không
+                    val book = bookRepository.getBookById(item.bookId)
+                    if (book != null) {
+                        // Sách còn tồn tại, cập nhật thông tin mới nhất (Giá, Ảnh, Tiêu đề)
+                        validatedItems.add(item.copy(
+                            title = book.title,
+                            price = book.price,
+                            imageUrl = book.imageUrl,
+                            author = book.author
+                        ))
+                    } else {
+                        // Sách đã bị xóa khỏi hệ thống, tự động xóa khỏi giỏ hàng của user
+                        repository.removeFromCart(item.bookId)
+                    }
+                }
+
+                _uiState.update { it.copy(cartItems = validatedItems, isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }

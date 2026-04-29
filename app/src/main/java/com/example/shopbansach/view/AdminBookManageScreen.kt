@@ -31,8 +31,8 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.AdminBookViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,7 +168,7 @@ fun AdminBookItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = String.format(Locale.US, "%,dđ", book.price),
+                    text = CurrencyUtils.formatPrice(book.price),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
