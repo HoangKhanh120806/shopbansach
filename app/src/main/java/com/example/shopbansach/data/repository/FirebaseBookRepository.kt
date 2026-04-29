@@ -1,8 +1,8 @@
 package com.example.shopbansach.data.repository
 
 import com.example.shopbansach.data.model.Book
-import com.example.shopbansach.data.model.UserRole
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
@@ -54,6 +54,32 @@ class FirebaseBookRepository {
         }
     }
 
+    /**
+     * Lấy danh sách sách theo danh sách ID (Tối ưu hóa giỏ hàng)
+     */
+    suspend fun getBooksByIds(ids: List<String>): List<Book> {
+        if (ids.isEmpty()) return emptyList()
+        return try {
+            val validIds = ids.filter { it.isNotEmpty() }.distinct()
+            if (validIds.isEmpty()) return emptyList()
+
+            // Firestore whereIn hỗ trợ tối đa 30 ID mỗi lần truy vấn
+            val chunks = validIds.chunked(30)
+            val allBooks = mutableListOf<Book>()
+            
+            for (chunk in chunks) {
+                val snapshot = booksCollection
+                    .whereIn(FieldPath.documentId(), chunk)
+                    .get()
+                    .await()
+                allBooks.addAll(snapshot.toObjects(Book::class.java))
+            }
+            allBooks
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     suspend fun searchBooks(queryText: String): List<Book> {
         if (queryText.isEmpty()) return emptyList()
         val queryLower = queryText.lowercase(Locale.ROOT)
@@ -92,9 +118,6 @@ class FirebaseBookRepository {
         }
     }
 
-    /**
-     * Lưu sách an toàn: Kiểm tra quyền sở hữu (Hoặc là Admin)
-     */
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
@@ -103,8 +126,6 @@ class FirebaseBookRepository {
 
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
-                
-                // Kiểm tra xem có phải chủ sở hữu hoặc Admin không
                 val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
                 val role = currentUserDoc.getString("role")
                 
@@ -151,9 +172,6 @@ class FirebaseBookRepository {
         }
     }
 
-    /**
-     * Xóa sách an toàn: Kiểm tra quyền sở hữu hoặc quyền Admin
-     */
     suspend fun deleteBook(bookId: String): Result<Unit> {
         return try {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
@@ -162,8 +180,6 @@ class FirebaseBookRepository {
 
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
-                
-                // Kiểm tra Role của Admin
                 val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
                 val role = currentUserDoc.getString("role")
 

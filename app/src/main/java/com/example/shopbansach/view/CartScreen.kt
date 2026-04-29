@@ -125,7 +125,10 @@ fun CartScreen(
                             }
                             PrimaryButton(
                                 text = "MUA HÀNG (${selectedItems.size})",
-                                onClick = { navController.navigate(Screen.Checkout.route) },
+                                onClick = { 
+                                    // SỬA TẠI ĐÂY: Dùng createRoute() để tạo đường dẫn hợp lệ
+                                    navController.navigate(Screen.Checkout.createRoute()) 
+                                },
                                 modifier = Modifier.width(180.dp),
                                 enabled = selectedItems.isNotEmpty()
                             )
@@ -139,7 +142,7 @@ fun CartScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else if (uiState.cartItems.isEmpty()) {

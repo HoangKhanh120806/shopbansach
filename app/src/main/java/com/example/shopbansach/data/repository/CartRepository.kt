@@ -27,7 +27,6 @@ class CartRepository {
                         transaction.update(docRef, "isSelected", true)
                     }
                 } else {
-                    // Nếu forceSelected là true, đảm bảo item mới tạo cũng được chọn
                     val itemToSet = if (forceSelected) cartItem.copy(isSelected = true) else cartItem
                     transaction.set(docRef, itemToSet)
                 }
@@ -98,6 +97,24 @@ class CartRepository {
         }
     }
     
+    /**
+     * Xóa danh sách các sản phẩm khỏi giỏ hàng (Dùng sau khi thanh toán)
+     */
+    suspend fun removeItemsFromCart(bookIds: List<String>): Result<Unit> {
+        if (bookIds.isEmpty()) return Result.success(Unit)
+        return try {
+            val collection = getCartCollection() ?: throw Exception("User not logged in")
+            val batch = firestore.batch()
+            for (id in bookIds) {
+                batch.delete(collection.document(id))
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun clearCart(): Result<Unit> {
         return try {
             val collection = getCartCollection() ?: throw Exception("User not logged in")

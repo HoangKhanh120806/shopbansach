@@ -25,7 +25,7 @@ sealed class CartActionState {
 
 data class CartUiState(
     val cartItems: List<CartItem> = emptyList(),
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true, // Mặc định là true để tránh flash màn hình trống
     val actionState: CartActionState = CartActionState.Idle,
     val errorMessage: String? = null
 )
@@ -48,22 +48,25 @@ class CartViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val rawCartItems = repository.getCartItems()
-                val validatedItems = mutableListOf<CartItem>()
+                if (rawCartItems.isEmpty()) {
+                    _uiState.update { it.copy(cartItems = emptyList(), isLoading = false) }
+                    return@launch
+                }
 
-                for (item in rawCartItems) {
-                    // Kiểm tra xem sách có còn tồn tại trong hệ thống không
-                    val book = bookRepository.getBookById(item.bookId)
+                val bookIds = rawCartItems.map { it.bookId }
+                val allBooks = bookRepository.getBooksByIds(bookIds)
+
+                val validatedItems = rawCartItems.map { item ->
+                    val book = allBooks.find { it.id == item.bookId }
                     if (book != null) {
-                        // Sách còn tồn tại, cập nhật thông tin mới nhất (Giá, Ảnh, Tiêu đề)
-                        validatedItems.add(item.copy(
+                        item.copy(
                             title = book.title,
                             price = book.price,
                             imageUrl = book.imageUrl,
                             author = book.author
-                        ))
+                        )
                     } else {
-                        // Sách đã bị xóa khỏi hệ thống, tự động xóa khỏi giỏ hàng của user
-                        repository.removeFromCart(item.bookId)
+                        item
                     }
                 }
 
@@ -97,6 +100,7 @@ class CartViewModel(
     }
 
     fun updateQuantity(bookId: String, newQuantity: Int) {
+        val currentItems = _uiState.value.cartItems
         _uiState.update { state ->
             state.copy(
                 cartItems = state.cartItems.map { 
@@ -107,8 +111,8 @@ class CartViewModel(
         
         viewModelScope.launch {
             val result = repository.updateQuantity(bookId, newQuantity)
-            if (!result.isSuccess) {
-                loadCartItems()
+            if (result.isFailure) {
+                _uiState.update { it.copy(cartItems = currentItems) }
             }
         }
     }
@@ -123,10 +127,7 @@ class CartViewModel(
         }
 
         viewModelScope.launch {
-            val result = repository.toggleSelection(bookId, isSelected)
-            if (!result.isSuccess) {
-                loadCartItems()
-            }
+            repository.toggleSelection(bookId, isSelected)
         }
     }
 
@@ -138,10 +139,7 @@ class CartViewModel(
         }
 
         viewModelScope.launch {
-            val result = repository.toggleAllSelection(isSelected)
-            if (!result.isSuccess) {
-                loadCartItems()
-            }
+            repository.toggleAllSelection(isSelected)
         }
     }
 
@@ -154,29 +152,15 @@ class CartViewModel(
         }
     }
 
-    fun clearCart(onComplete: () -> Unit = {}) {
+    fun clearCart() {
         viewModelScope.launch {
             val result = repository.clearCart()
             if (result.isSuccess) {
-                loadCartItems()
-                onComplete()
+                _uiState.update { it.copy(cartItems = emptyList()) }
             }
         }
     }
 
-    fun clearSelectedItems(onComplete: () -> Unit = {}) {
-        viewModelScope.launch {
-            val result = repository.clearSelectedItems()
-            if (result.isSuccess) {
-                loadCartItems()
-                onComplete()
-            }
-        }
-    }
-
-    /**
-     * Xử lý thanh toán an toàn: Kiểm tra tồn kho, trừ kho và LƯU ĐƠN HÀNG
-     */
     fun processCheckout(
         checkoutItems: List<CartItem>,
         isBuyNow: Boolean,
@@ -190,15 +174,13 @@ class CartViewModel(
             try {
                 val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: throw Exception("Chưa đăng nhập")
 
-                // 1. Kiểm tra và cập nhật tồn kho (Transaction)
                 for (item in checkoutItems) {
                     val result = bookRepository.updateStockWithCheck(item.bookId, item.quantity)
                     if (result.isFailure) {
-                        throw result.exceptionOrNull() ?: Exception("Lỗi cập nhật tồn kho cho sản phẩm ${item.title}")
+                        throw result.exceptionOrNull() ?: Exception("Sản phẩm ${item.title} không đủ tồn kho")
                     }
                 }
 
-                // 2. Tạo đơn hàng mới
                 val newOrder = Order(
                     userId = currentUserId,
                     items = checkoutItems,
@@ -208,17 +190,12 @@ class CartViewModel(
                 )
                 
                 val orderResult = orderRepository.createOrder(newOrder)
-                if (orderResult.isFailure) {
-                    throw orderResult.exceptionOrNull() ?: Exception("Lỗi khi tạo đơn hàng")
-                }
-                
                 val orderId = orderResult.getOrThrow()
 
-                // 3. Dọn dẹp giỏ hàng nếu không phải là mua ngay
-                if (!isBuyNow) {
-                    repository.clearSelectedItems()
-                    loadCartItems()
-                }
+                val purchasedBookIds = checkoutItems.map { it.bookId }
+                repository.removeItemsFromCart(purchasedBookIds)
+                
+                loadCartItems()
 
                 _uiState.update { it.copy(isLoading = false) }
                 onComplete(orderId)
