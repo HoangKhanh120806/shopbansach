@@ -183,7 +183,7 @@ class CartViewModel(
         address: Address,
         paymentMethod: String,
         totalPrice: Long,
-        onComplete: () -> Unit
+        onComplete: (String) -> Unit
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -211,6 +211,8 @@ class CartViewModel(
                 if (orderResult.isFailure) {
                     throw orderResult.exceptionOrNull() ?: Exception("Lỗi khi tạo đơn hàng")
                 }
+                
+                val orderId = orderResult.getOrThrow()
 
                 // 3. Dọn dẹp giỏ hàng nếu không phải là mua ngay
                 if (!isBuyNow) {
@@ -219,7 +221,7 @@ class CartViewModel(
                 }
 
                 _uiState.update { it.copy(isLoading = false) }
-                onComplete()
+                onComplete(orderId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }

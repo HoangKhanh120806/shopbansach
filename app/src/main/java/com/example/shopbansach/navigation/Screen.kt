@@ -25,7 +25,9 @@ sealed class Screen(val route : String){
             if (bookId != null) "checkout?bookId=$bookId&quantity=$quantity" else "checkout"
     }
 
-    object ThankYou : Screen("thank_you")
+    object ThankYou : Screen("thank_you/{orderId}") {
+        fun createRoute(orderId: String) = "thank_you/$orderId"
+    }
 
     object Settings : Screen("settings")
 

@@ -162,8 +162,8 @@ fun CheckoutScreen(
                                     ),
                                     paymentMethod = selectedPayment,
                                     totalPrice = total
-                                ) {
-                                    navController.navigate(Screen.ThankYou.route) {
+                                ) { orderId ->
+                                    navController.navigate(Screen.ThankYou.createRoute(orderId)) {
                                         popUpTo(Screen.Home.route)
                                     }
                                 }

@@ -1,5 +1,6 @@
 package com.example.shopbansach.data.repository
 
+import android.util.Log
 import com.example.shopbansach.data.model.Order
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -16,21 +17,43 @@ class OrderRepository {
             val docRef = ordersCollection.document()
             val orderWithId = order.copy(id = docRef.id)
             docRef.set(orderWithId).await()
+            Log.d("OrderRepository", "Order created successfully: ${docRef.id}")
             Result.success(docRef.id)
         } catch (e: Exception) {
+            Log.e("OrderRepository", "Error creating order", e)
             Result.failure(e)
+        }
+    }
+
+    suspend fun getOrderById(orderId: String): Order? {
+        return try {
+            val document = ordersCollection.document(orderId).get().await()
+            val order = document.toObject(Order::class.java)
+            if (order == null) Log.e("OrderRepository", "Order not found: $orderId")
+            order
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Error getting order by ID", e)
+            null
         }
     }
 
     suspend fun getOrdersByUser(userId: String): List<Order> {
         return try {
+            // Lưu ý: Query này cần Composite Index (userId: ASC, createdAt: DESC)
             val snapshot = ordersCollection
                 .whereEqualTo("userId", userId)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get().await()
             snapshot.toObjects(Order::class.java)
         } catch (e: Exception) {
-            emptyList()
+            Log.e("OrderRepository", "Error getting user orders. Check if Index is created.", e)
+            // Fallback: Thử lấy không có orderBy nếu chưa có Index
+            try {
+                val fallbackSnapshot = ordersCollection.whereEqualTo("userId", userId).get().await()
+                fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
+            } catch (fallbackEx: Exception) {
+                emptyList()
+            }
         }
     }
 

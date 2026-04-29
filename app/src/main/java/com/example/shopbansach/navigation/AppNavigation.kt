@@ -93,8 +93,12 @@ fun AppNavigation(
                 CheckoutScreen(navController = navController, buyNowBookId = bookId, buyNowQuantity = quantity)
             }
 
-            composable(route = Screen.ThankYou.route) {
-                ThankYouScreen(navController = navController)
+            composable(
+                route = Screen.ThankYou.route,
+                arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+                ThankYouScreen(navController = navController, orderId = orderId)
             }
 
             composable(route = Screen.Profile.route) {
@@ -162,10 +166,7 @@ fun AppNavigation(
             }
 
             composable(route = Screen.AdminOrderManage.route) {
-                // Sẽ tạo AdminOrderManageScreen sau
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Admin Order Manage Screen")
-                }
+                AdminOrderManageScreen(navController = navController)
             }
 
             // Route cho Địa chỉ
