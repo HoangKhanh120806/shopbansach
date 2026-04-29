@@ -3,7 +3,9 @@ package com.example.shopbansach.view
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -76,6 +78,7 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -268,6 +271,9 @@ fun ProfileScreen(
                         }
                     }
                 }
+                
+                // Thêm Spacer cuối cùng để nội dung không bị sát BottomBar
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
