@@ -40,10 +40,26 @@ fun CartScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
-    val selectedItems by remember { derivedStateOf { uiState.cartItems.filter { it.isSelected } } }
-    val subtotal by remember { derivedStateOf { selectedItems.sumOf { it.price * it.quantity } } }
+    // Sử dụng remember với key là uiState.cartItems để đảm bảo tính toán lại khi dữ liệu thay đổi
+    val selectedItems = remember(uiState.cartItems) { 
+        uiState.cartItems.filter { it.isSelected && it.stock > 0 } 
+    }
+    
+    val subtotal = remember(selectedItems) { 
+        selectedItems.sumOf { it.price * it.quantity } 
+    }
+    
     val shipping = if (subtotal > 0) 30000L else 0L
-    val isAllSelected by remember { derivedStateOf { uiState.cartItems.isNotEmpty() && uiState.cartItems.all { it.isSelected } } }
+    
+    // Trạng thái "Chọn tất cả" dựa trên những sản phẩm CÒN HÀNG
+    val isAllSelected = remember(uiState.cartItems) {
+        val available = uiState.cartItems.filter { it.stock > 0 }
+        available.isNotEmpty() && available.all { it.isSelected }
+    }
+
+    val hasAvailableItems = remember(uiState.cartItems) { 
+        uiState.cartItems.any { it.stock > 0 } 
+    }
 
     var itemToRemove by remember { mutableStateOf<CartItem?>(null) }
 
@@ -95,11 +111,17 @@ fun CartScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                modifier = Modifier.clickable { viewModel.toggleSelectAll(!isAllSelected) },
+                                modifier = Modifier.clickable { 
+                                    if (hasAvailableItems) viewModel.toggleSelectAll(!isAllSelected) 
+                                },
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Checkbox(checked = isAllSelected, onCheckedChange = { viewModel.toggleSelectAll(it) })
-                                Text("Chọn tất cả", style = MaterialTheme.typography.bodyMedium)
+                                Checkbox(
+                                    checked = isAllSelected, 
+                                    onCheckedChange = { viewModel.toggleSelectAll(it) },
+                                    enabled = hasAvailableItems
+                                )
+                                Text("Chọn tất cả (Còn hàng)", style = MaterialTheme.typography.bodyMedium)
                             }
                             Text(
                                 text = "Phí ship: ${CurrencyUtils.formatPrice(shipping)}",
@@ -144,9 +166,6 @@ fun CartScreen(
         } else if (uiState.cartItems.isEmpty()) {
             EmptyCartView(onShopNow = { navController.navigate(Screen.Home.route) })
         } else {
-            // KHẮC PHỤC LỖI KHÔNG CUỘN ĐƯỢC:
-            // 1. Loại bỏ .padding(innerPadding) khỏi Modifier để LazyColumn nhận được sự kiện chạm toàn màn hình.
-            // 2. Dùng contentPadding để đẩy nội dung bên trong thoát khỏi vùng bị TopBar và BottomBar che.
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
@@ -158,7 +177,11 @@ fun CartScreen(
                     CartItemCard(
                         item = item,
                         onToggleSelection = { viewModel.toggleSelection(item.bookId, it) },
-                        onIncrease = { viewModel.updateQuantity(item.bookId, item.quantity + 1) },
+                        onIncrease = { 
+                            if (item.quantity < item.stock) {
+                                viewModel.updateQuantity(item.bookId, item.quantity + 1)
+                            }
+                        },
                         onDecrease = { 
                             if (item.quantity > 1) viewModel.updateQuantity(item.bookId, item.quantity - 1)
                             else itemToRemove = item
@@ -179,6 +202,9 @@ fun CartItemCard(
     onDecrease: () -> Unit,
     onRemove: () -> Unit
 ) {
+    val isOutOfStock = item.stock <= 0
+    val isInsufficient = !isOutOfStock && item.quantity > item.stock
+
     CustomCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -188,16 +214,33 @@ fun CartItemCard(
             modifier = Modifier.padding(12.dp), 
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = item.isSelected, onCheckedChange = onToggleSelection)
-            
-            AsyncImage(
-                model = item.imageUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(70.dp, 100.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
+            Checkbox(
+                checked = item.isSelected && !isOutOfStock, 
+                onCheckedChange = onToggleSelection,
+                enabled = !isOutOfStock
             )
+            
+            Box {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(70.dp, 100.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop,
+                    alpha = if (isOutOfStock) 0.5f else 1.0f
+                )
+                if (isOutOfStock) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        modifier = Modifier.matchParentSize().clip(RoundedCornerShape(12.dp))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("HẾT HÀNG", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.width(12.dp))
             
@@ -207,16 +250,27 @@ fun CartItemCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (isOutOfStock) Color.Gray else Color.Unspecified
                 )
                 Text(
                     text = item.author, 
                     fontSize = 12.sp, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                
+                if (isInsufficient) {
+                    Text(
+                        "Chỉ còn ${item.stock} sản phẩm", 
+                        color = Color(0xFFE65100), 
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 Text(
                     text = CurrencyUtils.formatPrice(item.price),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (isOutOfStock) Color.Gray else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 15.sp,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -244,8 +298,17 @@ fun CartItemCard(
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 14.sp
                         )
-                        IconButton(onClick = onIncrease, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                        IconButton(
+                            onClick = onIncrease, 
+                            modifier = Modifier.size(36.dp),
+                            enabled = !isOutOfStock && item.quantity < item.stock
+                        ) {
+                            Icon(
+                                Icons.Default.Add, 
+                                null, 
+                                modifier = Modifier.size(18.dp),
+                                tint = if (isOutOfStock || item.quantity >= item.stock) Color.Gray else MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                     

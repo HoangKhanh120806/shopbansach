@@ -45,10 +45,19 @@ class CartViewModel(
     private val auth = FirebaseAuth.getInstance()
 
     init {
-        loadCartItems()
+        // Chỉ đăng ký listener, nó sẽ tự động gọi load lần đầu
+        auth.addAuthStateListener { firebaseAuth ->
+            if (firebaseAuth.currentUser != null) {
+                loadCartItems()
+            } else {
+                _uiState.update { CartUiState() }
+            }
+        }
     }
 
     fun loadCartItems() {
+        val userId = auth.currentUser?.uid ?: return
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
@@ -69,10 +78,11 @@ class CartViewModel(
                             price = book.price,
                             imageUrl = book.imageUrl,
                             author = book.author,
-                            ownerId = book.ownerId
+                            ownerId = book.ownerId,
+                            stock = book.stock
                         )
                     } else {
-                        item
+                        item.copy(stock = 0)
                     }
                 }
 
@@ -94,7 +104,8 @@ class CartViewModel(
                 author = book.author,
                 ownerId = book.ownerId,
                 quantity = quantity,
-                isSelected = forceSelected
+                isSelected = forceSelected,
+                stock = book.stock
             )
             val result = repository.addToCart(item, forceSelected)
             if (result.isSuccess) {
@@ -136,11 +147,14 @@ class CartViewModel(
     }
 
     fun toggleSelectAll(isSelected: Boolean) {
+        // Cập nhật UI ngay lập tức
         _uiState.update { state ->
-            state.copy(
-                cartItems = state.cartItems.map { it.copy(isSelected = isSelected) }
-            )
+            val newList = state.cartItems.map { 
+                if (it.stock > 0) it.copy(isSelected = isSelected) else it.copy(isSelected = false)
+            }
+            state.copy(cartItems = newList)
         }
+        // Cập nhật Database
         viewModelScope.launch { repository.toggleAllSelection(isSelected) }
     }
 
@@ -177,34 +191,35 @@ class CartViewModel(
                     val finalItems = mutableListOf<CartItem>()
                     val sellerIds = mutableSetOf<String>()
 
-                    // 1. Kiểm tra tồn kho và lấy thông tin chủ shop CHÍNH XÁC từ database
                     checkoutItems.forEach { item ->
                         val bookRef = firestore.collection("books").document(item.bookId)
                         val snapshot = transaction.get(bookRef)
                         
+                        if (!snapshot.exists()) {
+                            throw Exception("Sản phẩm '${item.title}' không còn tồn tại")
+                        }
+
                         val currentStock = snapshot.getLong("stock") ?: 0L
                         if (currentStock < item.quantity) {
-                            throw Exception("Sản phẩm '${snapshot.getString("title")}' không đủ tồn kho")
+                            val title = snapshot.getString("title") ?: item.title
+                            throw Exception("Sản phẩm '$title' không đủ tồn kho (Còn lại: $currentStock)")
                         }
                         
                         val ownerId = snapshot.getString("ownerId") ?: ""
                         
-                        // Cập nhật lại item với ownerId thực tế từ DB
-                        finalItems.add(item.copy(ownerId = ownerId))
+                        finalItems.add(item.copy(ownerId = ownerId, stock = currentStock.toInt()))
                         if (ownerId.isNotEmpty()) sellerIds.add(ownerId)
 
-                        // Cập nhật kho
                         transaction.update(bookRef, "stock", currentStock - item.quantity)
                     }
 
-                    // 2. Tạo đơn hàng
                     val orderRef = firestore.collection("orders").document()
                     val finalOrderId = orderRef.id
                     
                     val newOrder = Order(
                         id = finalOrderId,
                         userId = currentUserId,
-                        items = finalItems, // Sử dụng danh sách đã được cập nhật ownerId
+                        items = finalItems,
                         totalPrice = totalPrice,
                         shippingAddress = address,
                         paymentMethod = paymentMethod,
@@ -214,7 +229,6 @@ class CartViewModel(
 
                     transaction.set(orderRef, newOrder)
 
-                    // 3. Xóa khỏi giỏ hàng
                     if (!isBuyNow) {
                         val cartCollection = firestore.collection("users").document(currentUserId).collection("cart")
                         checkoutItems.forEach { item ->

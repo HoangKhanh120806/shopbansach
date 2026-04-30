@@ -106,9 +106,7 @@ fun AddressItem(
     onSetDefault: () -> Unit
 ) {
     CustomCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { if (!address.isDefault) onSetDefault() } // CẢ THẺ ĐỀU NHẤN ĐƯỢC
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -116,15 +114,19 @@ fun AddressItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
+                // Vùng bên trái: Click để chọn mặc định (Tránh chồng lấp với nút Edit/Delete)
                 Row(
                     verticalAlignment = Alignment.CenterVertically, 
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(enabled = !address.isDefault) { onSetDefault() }
+                        .padding(vertical = 4.dp)
                 ) {
                     Icon(
                         imageVector = if (address.isDefault) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                         contentDescription = "Select Default",
                         tint = if (address.isDefault) MaterialTheme.colorScheme.primary else Color.Gray,
-                        modifier = Modifier.size(24.dp) // Icon to hơn
+                        modifier = Modifier.size(24.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Column {
@@ -138,6 +140,7 @@ fun AddressItem(
                     }
                 }
                 
+                // Vùng bên phải: Nút sửa/xóa tách biệt hoàn toàn
                 Row {
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
@@ -149,11 +152,14 @@ fun AddressItem(
             }
             
             Spacer(Modifier.height(8.dp))
+            // Nhấn vào địa chỉ chi tiết cũng có thể chọn mặc định
             Text(
                 text = "${address.addressDetail}, ${address.city}",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 36.dp)
+                modifier = Modifier
+                    .padding(start = 36.dp)
+                    .clickable(enabled = !address.isDefault) { onSetDefault() }
             )
             
             if (address.isDefault) {

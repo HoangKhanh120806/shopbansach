@@ -33,5 +33,9 @@ data class CartItem(
     
     @get:PropertyName("isSelected")
     @set:PropertyName("isSelected")
-    var isSelected: Boolean = false
+    var isSelected: Boolean = false,
+
+    @get:PropertyName("stock")
+    @set:PropertyName("stock")
+    var stock: Int = 0 // Thêm trường stock để kiểm tra nhanh trong giỏ hàng
 )
