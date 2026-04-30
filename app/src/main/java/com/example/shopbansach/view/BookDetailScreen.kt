@@ -9,12 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,6 +58,17 @@ fun BookDetailScreen(
 
     LaunchedEffect(bookId) {
         viewModel.getBookDetail(bookId)
+    }
+
+    // Xử lý thông báo khi thêm vào giỏ hàng thành công
+    LaunchedEffect(cartUiState.actionState) {
+        if (cartUiState.actionState is CartActionState.Success) {
+            Toast.makeText(context, "Đã thêm vào giỏ hàng!", Toast.LENGTH_SHORT).show()
+            cartViewModel.resetActionState()
+        } else if (cartUiState.actionState is CartActionState.Error) {
+            Toast.makeText(context, (cartUiState.actionState as CartActionState.Error).message, Toast.LENGTH_SHORT).show()
+            cartViewModel.resetActionState()
+        }
     }
 
     Scaffold(
@@ -123,7 +129,6 @@ fun BookDetailScreen(
                         .padding(bottom = padding.calculateBottomPadding())
                         .verticalScroll(scrollState)
                 ) {
-                    // Header Section: Không áp dụng padding.top để ảnh tràn lên trên TopAppBar (vì TopAppBar trong suốt)
                     BookHeaderSection(book)
 
                     Column(
@@ -153,9 +158,7 @@ fun BookDetailScreen(
                             SuggestionChip(
                                 onClick = { },
                                 label = { Text(book.category) },
-                                colors = SuggestionChipDefaults.suggestionChipColors(
-                                    labelColor = MaterialTheme.colorScheme.tertiary
-                                )
+                                colors = SuggestionChipDefaults.suggestionChipColors(labelColor = MaterialTheme.colorScheme.tertiary)
                             )
                         }
 
@@ -174,8 +177,13 @@ fun BookDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             StatItem(label = "Đánh giá", value = "${book.rating}", icon = Icons.Default.Star, iconColor = Color(0xFFFFB300))
-                            StatItem(label = "Số trang", value = "${book.pages}", icon = Icons.AutoMirrored.Filled.ArrowBack) 
-                            StatItem(label = "Tồn kho", value = "${book.stock}", icon = Icons.Default.ShoppingCart)
+                            StatItem(label = "Số trang", value = "${book.pages}", icon = Icons.Default.MenuBook) 
+                            StatItem(
+                                label = "Tồn kho", 
+                                value = if (book.stock > 0) "${book.stock}" else "Hết hàng", 
+                                icon = Icons.Default.Inventory2,
+                                iconColor = if (book.stock > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
                         }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), thickness = 0.5.dp)
@@ -247,41 +255,137 @@ fun BookDetailScreen(
 }
 
 @Composable
+fun BottomActionSection(
+    book: Book, 
+    isAdding: Boolean, 
+    onAddToCart: () -> Unit, 
+    onBuyNow: () -> Unit
+) {
+    val isOutOfStock = book.stock <= 0
+    
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = 16.dp,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .navigationBarsPadding(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Giá bán", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    CurrencyUtils.formatPrice(book.price),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            IconButton(
+                onClick = onAddToCart,
+                enabled = !isAdding && !isOutOfStock,
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                if (isAdding) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.AddShoppingCart, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            PrimaryButton(
+                text = if (isOutOfStock) "HẾT HÀNG" else "MUA NGAY",
+                onClick = onBuyNow,
+                modifier = Modifier.width(140.dp),
+                enabled = !isOutOfStock
+            )
+        }
+    }
+}
+
+@Composable
+fun QuantitySelectionContent(
+    book: Book,
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit,
+    onConfirm: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .padding(24.dp)
+            .fillMaxWidth()
+            .navigationBarsPadding()
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = book.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(book.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(CurrencyUtils.formatPrice(book.price), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("Tồn kho: ${book.stock}", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Số lượng", fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { if (quantity > 1) onQuantityChange(quantity - 1) }) {
+                    Icon(Icons.Default.Remove, null)
+                }
+                Text("$quantity", modifier = Modifier.padding(horizontal = 16.dp), fontWeight = FontWeight.Bold)
+                IconButton(onClick = { if (quantity < book.stock) onQuantityChange(quantity + 1) }) {
+                    Icon(Icons.Default.Add, null)
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        PrimaryButton(text = "XÁC NHẬN", onClick = onConfirm)
+    }
+}
+
+@Composable
 fun BookHeaderSection(book: Book) {
     val density = LocalDensity.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(420.dp)
-    ) {
-        // Ảnh nền mờ
+    Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
         AsyncImage(
             model = book.imageUrl,
             contentDescription = null,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Crop,
             alpha = 0.2f
         )
-        
-        // Gradient chuyển màu xuống background của ứng dụng
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background),
-                        startY = with(density) { 250.dp.toPx() } // Bắt đầu chuyển màu từ giữa ảnh
-                    )
+            modifier = Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background),
+                    startY = with(density) { 250.dp.toPx() }
                 )
+            )
         )
-
-        // Ảnh bìa chính
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(top = 20.dp) // Giảm padding top để cân đối hơn
                 .width(180.dp)
                 .height(260.dp)
                 .shadow(24.dp, RoundedCornerShape(16.dp))
@@ -301,7 +405,7 @@ fun BookHeaderSection(book: Book) {
 fun StatItem(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, iconColor: Color = MaterialTheme.colorScheme.primary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(6.dp))
             Text(text = value, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
         }
@@ -311,128 +415,31 @@ fun StatItem(label: String, value: String, icon: androidx.compose.ui.graphics.ve
 
 @Composable
 fun SellerInfoSection(seller: User?, onVisitShop: () -> Unit) {
-    CustomCard(
-        modifier = Modifier.fillMaxWidth().clickable { onVisitShop() }
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!seller?.shopAvatarUrl.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = seller?.shopAvatarUrl,
-                        contentDescription = "Shop Avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(Icons.Default.Storefront, null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
-                }
+    CustomCard(modifier = Modifier.fillMaxWidth().clickable { onVisitShop() }) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                AsyncImage(model = seller?.shopAvatarUrl, contentDescription = null, contentScale = ContentScale.Crop)
             }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = seller?.shopName ?: seller?.name ?: "Đang tải...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(text = if (seller != null) "Đang hoạt động" else "Vui lòng đợi", color = if (seller != null) Color(0xFF4CAF50) else Color.Gray, fontSize = 12.sp)
+                Text(seller?.shopName ?: "Chủ shop", fontWeight = FontWeight.Bold)
+                Text("Người bán tin cậy", style = MaterialTheme.typography.bodySmall)
             }
-            
-            Button(
-                onClick = onVisitShop,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) {
-                Text("Xem Shop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-fun QuantitySelectionContent(
-    book: Book,
-    quantity: Int,
-    onQuantityChange: (Int) -> Unit,
-    onConfirm: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth().padding(24.dp).navigationBarsPadding()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(
-                model = book.imageUrl,
-                contentDescription = null,
-                modifier = Modifier.size(90.dp, 130.dp).clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            Column {
-                Text(book.title, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(text = CurrencyUtils.formatPrice(book.price), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, modifier = Modifier.padding(vertical = 4.dp))
-                Text("Kho: ${book.stock} cuốn", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Spacer(modifier = Modifier.height(32.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Số lượng mua", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))) {
-                IconButton(onClick = { if (quantity > 1) onQuantityChange(quantity - 1) }, enabled = quantity > 1) { Icon(Icons.Default.Remove, null) }
-                Text(text = "$quantity", modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                IconButton(onClick = { if (quantity < book.stock) onQuantityChange(quantity + 1) }, enabled = quantity < book.stock) { Icon(Icons.Default.Add, null) }
-            }
-        }
-        Spacer(modifier = Modifier.height(40.dp))
-        PrimaryButton(text = "XÁC NHẬN MUA", onClick = onConfirm)
-    }
-}
-
-@Composable
-fun BottomActionSection(book: Book, isAdding: Boolean, onAddToCart: () -> Unit, onBuyNow: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 16.dp,
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    ) {
-        Row(modifier = Modifier.padding(20.dp).navigationBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Giá ưu đãi", style = MaterialTheme.typography.labelMedium)
-                Text(text = CurrencyUtils.formatPrice(book.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-            }
-            OutlinedButton(
-                onClick = onAddToCart,
-                modifier = Modifier.height(56.dp).width(64.dp),
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
-                contentPadding = PaddingValues(0.dp),
-                enabled = !isAdding
-            ) {
-                if (isAdding) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Default.ShoppingCart, null, tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            PrimaryButton(text = "MUA NGAY", onClick = onBuyNow, modifier = Modifier.weight(1.5f).height(56.dp), isLoading = isAdding)
+            Text("Xem Shop", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
 }
 
 @Composable
 fun RelatedBookCard(book: Book, onClick: () -> Unit) {
-    Column(modifier = Modifier.width(130.dp).clickable { onClick() }) {
-        AsyncImage(model = book.imageUrl, contentDescription = null, modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp)).shadow(4.dp), contentScale = ContentScale.Crop)
-        Text(text = book.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
-        Text(text = CurrencyUtils.formatPrice(book.price), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+    Column(modifier = Modifier.width(120.dp).clickable { onClick() }) {
+        AsyncImage(
+            model = book.imageUrl,
+            contentDescription = null,
+            modifier = Modifier.height(160.dp).clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+        Text(book.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(CurrencyUtils.formatPrice(book.price), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
     }
 }

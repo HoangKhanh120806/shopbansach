@@ -45,34 +45,28 @@ class CartViewModel(
     private val auth = FirebaseAuth.getInstance()
 
     init {
-        // Chỉ đăng ký listener, nó sẽ tự động gọi load lần đầu
         auth.addAuthStateListener { firebaseAuth ->
-            if (firebaseAuth.currentUser != null) {
-                loadCartItems()
-            } else {
-                _uiState.update { CartUiState() }
-            }
+            if (firebaseAuth.currentUser != null) loadCartItems()
+            else _uiState.update { CartUiState() }
         }
     }
 
     fun loadCartItems() {
         val userId = auth.currentUser?.uid ?: return
-        
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { it.copy(isLoading = true) }
             try {
-                val rawCartItems = repository.getCartItems()
-                if (rawCartItems.isEmpty()) {
+                val rawItems = repository.getCartItems()
+                if (rawItems.isEmpty()) {
                     _uiState.update { it.copy(cartItems = emptyList(), isLoading = false) }
                     return@launch
                 }
 
-                val bookIds = rawCartItems.map { it.bookId }
-                val allBooks = bookRepository.getBooksByIds(bookIds)
+                val bookMap = bookRepository.getBooksByIds(rawItems.map { it.bookId })
+                    .associateBy { it.id }
 
-                val validatedItems = rawCartItems.map { item ->
-                    val book = allBooks.find { it.id == item.bookId }
-                    if (book != null) {
+                val validatedItems = rawItems.map { item ->
+                    bookMap[item.bookId]?.let { book ->
                         item.copy(
                             title = book.title,
                             price = book.price,
@@ -81,9 +75,7 @@ class CartViewModel(
                             ownerId = book.ownerId,
                             stock = book.stock
                         )
-                    } else {
-                        item.copy(stock = 0)
-                    }
+                    } ?: item.copy(stock = 0)
                 }
 
                 _uiState.update { it.copy(cartItems = validatedItems, isLoading = false) }
@@ -93,7 +85,7 @@ class CartViewModel(
         }
     }
 
-    fun addToCart(book: Book, quantity: Int = 1, forceSelected: Boolean = false) {
+    fun addToCart(book: Book, quantity: Int = 1) {
         viewModelScope.launch {
             _uiState.update { it.copy(actionState = CartActionState.Loading) }
             val item = CartItem(
@@ -104,10 +96,9 @@ class CartViewModel(
                 author = book.author,
                 ownerId = book.ownerId,
                 quantity = quantity,
-                isSelected = forceSelected,
                 stock = book.stock
             )
-            val result = repository.addToCart(item, forceSelected)
+            val result = repository.addToCart(item)
             if (result.isSuccess) {
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
@@ -117,59 +108,33 @@ class CartViewModel(
         }
     }
 
+    fun toggleSelectAll(isSelected: Boolean) {
+        val previousState = _uiState.value.cartItems
+        _uiState.update { state ->
+            state.copy(cartItems = state.cartItems.map { 
+                if (it.stock > 0) it.copy(isSelected = isSelected) else it.copy(isSelected = false)
+            })
+        }
+        viewModelScope.launch {
+            if (repository.toggleAllSelection(isSelected).isFailure) {
+                _uiState.update { it.copy(cartItems = previousState) }
+            }
+        }
+    }
+
     fun updateQuantity(bookId: String, newQuantity: Int) {
         val currentItems = _uiState.value.cartItems
+        val item = currentItems.find { it.bookId == bookId } ?: return
+        val finalQty = newQuantity.coerceIn(1, item.stock.coerceAtLeast(1))
+
         _uiState.update { state ->
-            state.copy(
-                cartItems = state.cartItems.map { 
-                    if (it.bookId == bookId) it.copy(quantity = if (newQuantity < 1) 1 else newQuantity) else it 
-                }
-            )
+            state.copy(cartItems = state.cartItems.map { 
+                if (it.bookId == bookId) it.copy(quantity = finalQty) else it 
+            })
         }
-        
         viewModelScope.launch {
-            val result = repository.updateQuantity(bookId, newQuantity)
-            if (result.isFailure) {
+            if (repository.updateQuantity(bookId, finalQty).isFailure) {
                 _uiState.update { it.copy(cartItems = currentItems) }
-            }
-        }
-    }
-
-    fun toggleSelection(bookId: String, isSelected: Boolean) {
-        _uiState.update { state ->
-            state.copy(
-                cartItems = state.cartItems.map { 
-                    if (it.bookId == bookId) it.copy(isSelected = isSelected) else it 
-                }
-            )
-        }
-        viewModelScope.launch { repository.toggleSelection(bookId, isSelected) }
-    }
-
-    fun toggleSelectAll(isSelected: Boolean) {
-        // Cập nhật UI ngay lập tức
-        _uiState.update { state ->
-            val newList = state.cartItems.map { 
-                if (it.stock > 0) it.copy(isSelected = isSelected) else it.copy(isSelected = false)
-            }
-            state.copy(cartItems = newList)
-        }
-        // Cập nhật Database
-        viewModelScope.launch { repository.toggleAllSelection(isSelected) }
-    }
-
-    fun removeFromCart(bookId: String) {
-        viewModelScope.launch {
-            if (repository.removeFromCart(bookId).isSuccess) {
-                loadCartItems()
-            }
-        }
-    }
-
-    fun clearCart() {
-        viewModelScope.launch {
-            if (repository.clearCart().isSuccess) {
-                _uiState.update { it.copy(cartItems = emptyList()) }
             }
         }
     }
@@ -195,29 +160,21 @@ class CartViewModel(
                         val bookRef = firestore.collection("books").document(item.bookId)
                         val snapshot = transaction.get(bookRef)
                         
-                        if (!snapshot.exists()) {
-                            throw Exception("Sản phẩm '${item.title}' không còn tồn tại")
-                        }
+                        if (!snapshot.exists()) throw Exception("Sản phẩm '${item.title}' đã bị xóa")
 
-                        val currentStock = snapshot.getLong("stock") ?: 0L
-                        if (currentStock < item.quantity) {
-                            val title = snapshot.getString("title") ?: item.title
-                            throw Exception("Sản phẩm '$title' không đủ tồn kho (Còn lại: $currentStock)")
-                        }
+                        val stock = snapshot.getLong("stock") ?: 0L
+                        if (stock < item.quantity) throw Exception("Sản phẩm '${snapshot.getString("title")}' chỉ còn $stock cuốn")
                         
                         val ownerId = snapshot.getString("ownerId") ?: ""
-                        
-                        finalItems.add(item.copy(ownerId = ownerId, stock = currentStock.toInt()))
+                        finalItems.add(item.copy(ownerId = ownerId, stock = stock.toInt()))
                         if (ownerId.isNotEmpty()) sellerIds.add(ownerId)
 
-                        transaction.update(bookRef, "stock", currentStock - item.quantity)
+                        transaction.update(bookRef, "stock", stock - item.quantity)
                     }
 
                     val orderRef = firestore.collection("orders").document()
-                    val finalOrderId = orderRef.id
-                    
-                    val newOrder = Order(
-                        id = finalOrderId,
+                    val order = Order(
+                        id = orderRef.id,
                         userId = currentUserId,
                         items = finalItems,
                         totalPrice = totalPrice,
@@ -227,25 +184,36 @@ class CartViewModel(
                         createdAt = System.currentTimeMillis()
                     )
 
-                    transaction.set(orderRef, newOrder)
+                    transaction.set(orderRef, order)
 
                     if (!isBuyNow) {
-                        val cartCollection = firestore.collection("users").document(currentUserId).collection("cart")
-                        checkoutItems.forEach { item ->
-                            transaction.delete(cartCollection.document(item.bookId))
-                        }
+                        val cartColl = firestore.collection("users").document(currentUserId).collection("cart")
+                        checkoutItems.forEach { transaction.delete(cartColl.document(it.bookId)) }
                     }
-
-                    finalOrderId
+                    orderRef.id
                 }.await()
 
-                loadCartItems()
-                _uiState.update { it.copy(isLoading = false) }
                 onComplete(orderId)
+                loadCartItems()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi thanh toán") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
         }
+    }
+
+    fun toggleSelection(bookId: String, isSelected: Boolean) {
+        _uiState.update { state ->
+            state.copy(cartItems = state.cartItems.map { if (it.bookId == bookId) it.copy(isSelected = isSelected) else it })
+        }
+        viewModelScope.launch { repository.toggleSelection(bookId, isSelected) }
+    }
+
+    fun removeFromCart(bookId: String) {
+        viewModelScope.launch { if (repository.removeFromCart(bookId).isSuccess) loadCartItems() }
+    }
+
+    fun clearCart() {
+        viewModelScope.launch { if (repository.clearCart().isSuccess) _uiState.update { it.copy(cartItems = emptyList()) } }
     }
 
     fun resetActionState() {
