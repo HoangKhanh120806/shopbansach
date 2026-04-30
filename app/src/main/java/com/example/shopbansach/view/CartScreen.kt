@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -41,10 +40,10 @@ fun CartScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
-    val selectedItems = uiState.cartItems.filter { it.isSelected }
-    val subtotal = selectedItems.sumOf { it.price * it.quantity }
+    val selectedItems by remember { derivedStateOf { uiState.cartItems.filter { it.isSelected } } }
+    val subtotal by remember { derivedStateOf { selectedItems.sumOf { it.price * it.quantity } } }
     val shipping = if (subtotal > 0) 30000L else 0L
-    val isAllSelected = uiState.cartItems.isNotEmpty() && uiState.cartItems.all { it.isSelected }
+    val isAllSelected by remember { derivedStateOf { uiState.cartItems.isNotEmpty() && uiState.cartItems.all { it.isSelected } } }
 
     var itemToRemove by remember { mutableStateOf<CartItem?>(null) }
 
@@ -85,7 +84,7 @@ fun CartScreen(
             if (uiState.cartItems.isNotEmpty()) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 20.dp,
+                    shadowElevation = 12.dp,
                     color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
@@ -125,10 +124,7 @@ fun CartScreen(
                             }
                             PrimaryButton(
                                 text = "MUA HÀNG (${selectedItems.size})",
-                                onClick = { 
-                                    // SỬA TẠI ĐÂY: Dùng createRoute() để tạo đường dẫn hợp lệ
-                                    navController.navigate(Screen.Checkout.createRoute()) 
-                                },
+                                onClick = { navController.navigate(Screen.Checkout.createRoute()) },
                                 modifier = Modifier.width(180.dp),
                                 enabled = selectedItems.isNotEmpty()
                             )
@@ -140,17 +136,23 @@ fun CartScreen(
             }
         },
         containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
+    ) { innerPadding -> 
         if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else if (uiState.cartItems.isEmpty()) {
             EmptyCartView(onShopNow = { navController.navigate(Screen.Home.route) })
         } else {
+            // KHẮC PHỤC LỖI KHÔNG CUỘN ĐƯỢC:
+            // 1. Loại bỏ .padding(innerPadding) khỏi Modifier để LazyColumn nhận được sự kiện chạm toàn màn hình.
+            // 2. Dùng contentPadding để đẩy nội dung bên trong thoát khỏi vùng bị TopBar và BottomBar che.
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(bottom = 20.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding() + 8.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 16.dp
+                )
             ) {
                 items(uiState.cartItems, key = { it.bookId }) { item ->
                     CartItemCard(
@@ -178,15 +180,22 @@ fun CartItemCard(
     onRemove: () -> Unit
 ) {
     CustomCard(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(12.dp), 
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Checkbox(checked = item.isSelected, onCheckedChange = onToggleSelection)
             
             AsyncImage(
                 model = item.imageUrl,
                 contentDescription = null,
-                modifier = Modifier.size(70.dp, 100.dp).clip(RoundedCornerShape(8.dp)),
+                modifier = Modifier
+                    .size(70.dp, 100.dp)
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
             
@@ -200,7 +209,11 @@ fun CartItemCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(item.author, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = item.author, 
+                    fontSize = 12.sp, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Text(
                     text = CurrencyUtils.formatPrice(item.price),
                     color = MaterialTheme.colorScheme.primary,
@@ -216,18 +229,33 @@ fun CartItemCard(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), 
+                                RoundedCornerShape(10.dp)
+                            )
                     ) {
-                        IconButton(onClick = onDecrease, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Remove, null, modifier = Modifier.size(16.dp))
+                        IconButton(onClick = onDecrease, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Remove, null, modifier = Modifier.size(18.dp))
                         }
-                        Text(text = "${item.quantity}", modifier = Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
-                        IconButton(onClick = onIncrease, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                        Text(
+                            text = "${item.quantity}", 
+                            modifier = Modifier.padding(horizontal = 10.dp), 
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp
+                        )
+                        IconButton(onClick = onIncrease, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                         }
                     }
-                    IconButton(onClick = onRemove) {
-                        Icon(Icons.Default.DeleteSweep, null, tint = Color.Gray)
+                    
+                    IconButton(
+                        onClick = onRemove,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        )
+                    ) {
+                        Icon(Icons.Default.DeleteSweep, null)
                     }
                 }
             }
@@ -242,9 +270,14 @@ fun EmptyCartView(onShopNow: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(Icons.Default.RemoveShoppingCart, null, modifier = Modifier.size(100.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+        Icon(
+            Icons.Default.RemoveShoppingCart, 
+            null, 
+            modifier = Modifier.size(100.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Giỏ hàng trống", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Giỏ hàng của bạn đang trống", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
         PrimaryButton(text = "KHÁM PHÁ NGAY", onClick = onShopNow, modifier = Modifier.width(200.dp))
     }

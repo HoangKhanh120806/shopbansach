@@ -62,15 +62,17 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                    .padding(bottom = padding.calculateBottomPadding()), // Chỉ padding dưới cho BottomBar
+                contentPadding = PaddingValues(top = padding.calculateTopPadding())
             ) {
+                // Giảm top padding từ 32dp xuống 16dp để cân đối hơn
                 item { HomeHeader(navController, uiState.currentUser) }
                 item { StorySlideSection(uiState.featuredBooks, navController) }
                 item { NewArrivalsHeader() }
                 items(uiState.newArrivals) { book ->
                     NewArrivalItem(book, navController)
                 }
+                item { Spacer(modifier = Modifier.height(20.dp)) }
             }
         }
     }
@@ -81,59 +83,52 @@ fun HomeHeader(navController: NavController, currentUser: User?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 32.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 20.dp), // Tối ưu khoảng cách
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
             Text(
                 text = "Cozy Reads",
-                style = MaterialTheme.typography.headlineLarge.copy(
+                style = MaterialTheme.typography.headlineMedium.copy( // Đổi từ Large xuống Medium để đỡ thô
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = FontFamily.Serif,
-                    letterSpacing = (-1).sp
+                    letterSpacing = (-0.5).sp
                 ),
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = currentUser?.let { "Chào mừng, ${it.name}" } ?: "Thế giới sách trong tầm tay",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(
-                    Icons.Default.NotificationsNone, 
-                    contentDescription = null, 
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            IconButton(
+                onClick = { /* TODO */ },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(Icons.Default.NotificationsNone, null, tint = MaterialTheme.colorScheme.primary)
             }
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable {
-                        navController.navigate(Screen.Profile.route)
-                    },
+                    .clickable { navController.navigate(Screen.Profile.route) },
                 contentAlignment = Alignment.Center
             ) {
                 if (!currentUser?.avatarUrl.isNullOrEmpty()) {
                     AsyncImage(
                         model = currentUser?.avatarUrl,
-                        contentDescription = "Profile Picture",
+                        contentDescription = "Profile",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Icon(
-                        Icons.Default.Person, 
-                        contentDescription = null, 
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -142,11 +137,11 @@ fun HomeHeader(navController: NavController, currentUser: User?) {
 
 @Composable
 fun StorySlideSection(books: List<Book>, navController: NavController) {
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -154,20 +149,20 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
                 text = "Sách nổi bật",
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = MaterialTheme.colorScheme.primary
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "Xem tất cả",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.tertiary,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable { /* TODO */ }
             )
         }
         
         LazyRow(
             contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(books) { book ->
                 FeaturedBookCard(book) {
@@ -182,14 +177,14 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
 fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
     Column(
         modifier = Modifier
-            .width(160.dp)
+            .width(140.dp) // Nhỏ gọn hơn một chút
             .clickable { onClick() }
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(230.dp)
-                .shadow(8.dp, RoundedCornerShape(12.dp))
+                .height(200.dp)
+                .shadow(4.dp, RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
@@ -200,30 +195,21 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
-            } else {
-                Text(
-                    "COVER",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                    fontWeight = FontWeight.Bold
-                )
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = book.title,
-            fontFamily = FontFamily.Serif,
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
+            fontSize = 14.sp,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.primary
+            overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = book.author,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
+            text = CurrencyUtils.formatPrice(book.price),
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -233,10 +219,9 @@ fun NewArrivalsHeader() {
     Text(
         text = "Mới cập nhật",
         fontFamily = FontFamily.Serif,
-        fontSize = 22.sp,
+        fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 16.dp)
+        modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 12.dp)
     )
 }
 
@@ -245,74 +230,32 @@ fun NewArrivalItem(book: Book, navController: NavController) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .padding(horizontal = 24.dp, vertical = 6.dp)
             .clickable { navController.navigate(Screen.BookDetail.createRoute(book.id)) },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(10.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(60.dp, 85.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                if (!book.imageUrl.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = book.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
+            AsyncImage(
+                model = book.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.size(50.dp, 75.dp).clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = book.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = book.author,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFFFB300),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = " ${book.rating}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                Text(text = book.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(text = book.author, fontSize = 12.sp, color = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(12.dp))
+                    Text(text = " ${book.rating}", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            Text(
-                text = CurrencyUtils.formatPriceWithVND(book.price),
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.tertiary,
-                fontSize = 15.sp
-            )
+            Text(text = CurrencyUtils.formatPrice(book.price), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
         }
     }
 }
