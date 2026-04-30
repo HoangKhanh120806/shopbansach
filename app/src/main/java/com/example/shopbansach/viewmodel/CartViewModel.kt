@@ -153,12 +153,18 @@ class CartViewModel(
                 val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
 
                 val orderId = firestore.runTransaction { transaction ->
+                    // BƯỚC 1: THỰC HIỆN TẤT CẢ CÁC LỆNH ĐỌC (READS) TRƯỚC
+                    val snapshots = checkoutItems.associateWith { item ->
+                        val bookRef = firestore.collection("books").document(item.bookId)
+                        transaction.get(bookRef)
+                    }
+
+                    // BƯỚC 2: KIỂM TRA DỮ LIỆU VÀ CHUẨN BỊ THÔNG TIN
                     val finalItems = mutableListOf<CartItem>()
                     val sellerIds = mutableSetOf<String>()
 
                     checkoutItems.forEach { item ->
-                        val bookRef = firestore.collection("books").document(item.bookId)
-                        val snapshot = transaction.get(bookRef)
+                        val snapshot = snapshots[item] ?: throw Exception("Không thể lấy dữ liệu sản phẩm")
                         
                         if (!snapshot.exists()) throw Exception("Sản phẩm '${item.title}' đã bị xóa")
 
@@ -168,10 +174,17 @@ class CartViewModel(
                         val ownerId = snapshot.getString("ownerId") ?: ""
                         finalItems.add(item.copy(ownerId = ownerId, stock = stock.toInt()))
                         if (ownerId.isNotEmpty()) sellerIds.add(ownerId)
-
-                        transaction.update(bookRef, "stock", stock - item.quantity)
                     }
 
+                    // BƯỚC 3: THỰC HIỆN TẤT CẢ CÁC LỆNH GHI (WRITES) SAU CÙNG
+                    // 3.1. Cập nhật tồn kho
+                    checkoutItems.forEach { item ->
+                        val snapshot = snapshots[item]!!
+                        val currentStock = snapshot.getLong("stock") ?: 0L
+                        transaction.update(snapshot.reference, "stock", currentStock - item.quantity)
+                    }
+
+                    // 3.2. Tạo đơn hàng
                     val orderRef = firestore.collection("orders").document()
                     val order = Order(
                         id = orderRef.id,
@@ -183,13 +196,14 @@ class CartViewModel(
                         sellerIds = sellerIds.toList(),
                         createdAt = System.currentTimeMillis()
                     )
-
                     transaction.set(orderRef, order)
 
+                    // 3.3. Xóa khỏi giỏ hàng (nếu không phải Mua Ngay)
                     if (!isBuyNow) {
                         val cartColl = firestore.collection("users").document(currentUserId).collection("cart")
                         checkoutItems.forEach { transaction.delete(cartColl.document(it.bookId)) }
                     }
+
                     orderRef.id
                 }.await()
 
