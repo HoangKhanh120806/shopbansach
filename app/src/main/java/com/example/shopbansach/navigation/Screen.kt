@@ -60,4 +60,6 @@ sealed class Screen(val route : String){
     }
 
     object OrderHistory : Screen("order_history")
+
+    object SellerOrderManage : Screen("seller_order_manage")
 }

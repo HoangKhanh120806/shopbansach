@@ -17,12 +17,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class MyShopUiState(
     val myBooks: List<Book> = emptyList(),
+    val bookSoldCounts: Map<String, Int> = emptyMap(),
     val currentUser: User? = null,
     val totalRevenue: Long = 0,
+    val deliveredRevenue: Long = 0,
+    val pendingRevenue: Long = 0,
     val totalSold: Int = 0,
+    val soldToday: Int = 0,
+    val newOrdersCount: Int = 0,
     val isLoading: Boolean = false,
     val isUpdating: Boolean = false,
     val errorMessage: String? = null
@@ -60,50 +66,107 @@ class MyShopViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // 1. Lấy danh sách sách của shop
-                val books = bookRepository.getBooksByOwner(userId)
-                val myBookIds = books.map { it.id }.toSet()
+                // 1. Lấy danh sách sách của tôi trước
+                val myBooks = bookRepository.getBooksByOwner(userId)
+                val myBookIds = myBooks.map { it.id }.toSet()
+                Log.d("MyShopVM", "Found ${myBooks.size} books owned by $userId")
 
-                // 2. Lấy đơn hàng (Cố gắng lấy từ cả 2 nguồn để đảm bảo không sót)
-                val allOrders = mutableListOf<Order>()
+                // 2. Thu thập đơn hàng từ nhiều nguồn để tránh lỗi quyền truy cập/Index
+                val allPossibleOrders = mutableListOf<Order>()
+                
+                // Nguồn A: Đơn hàng chứa sellerId của mình (Cấu trúc mới)
                 try {
-                    allOrders.addAll(orderRepository.getAllOrders())
+                    val ordersBySeller = orderRepository.getOrdersBySeller(userId)
+                    allPossibleOrders.addAll(ordersBySeller)
+                    Log.d("MyShopVM", "Source A (SellerIds): Found ${ordersBySeller.size} orders")
                 } catch (e: Exception) {
-                    Log.e("MyShopViewModel", "Error fetching all orders, trying user orders")
+                    Log.e("MyShopVM", "Source A failed: ${e.message}")
                 }
-                
-                // Luôn lấy thêm đơn hàng của chính user (quan trọng khi user tự mua hàng để test)
-                val userOrders = orderRepository.getOrdersByUser(userId)
-                allOrders.addAll(userOrders)
-                
-                // Loại bỏ các đơn hàng trùng lặp
-                val distinctOrders = allOrders.distinctBy { it.id }
-                
-                var revenue = 0L
-                var soldCount = 0
-                
+
+                // Nguồn B: Đơn hàng do chính mình đặt (Nếu mình tự mua hàng của mình để test)
+                try {
+                    val userOrders = orderRepository.getOrdersByUser(userId)
+                    allPossibleOrders.addAll(userOrders)
+                    Log.d("MyShopVM", "Source B (UserOrders): Found ${userOrders.size} orders")
+                } catch (e: Exception) { }
+
+                // Nguồn C: Thử lấy tất cả đơn hàng (Nếu là Admin hoặc Rules cho phép)
+                try {
+                    val globalOrders = orderRepository.getAllOrders()
+                    allPossibleOrders.addAll(globalOrders)
+                    Log.d("MyShopVM", "Source C (AllOrders): Found ${globalOrders.size} orders")
+                } catch (e: Exception) { }
+
+                val distinctOrders = allPossibleOrders.distinctBy { it.id }
+                Log.d("MyShopVM", "Total unique orders to process: ${distinctOrders.size}")
+
+                var totalRev = 0L
+                var deliveredRev = 0L
+                var pendingRev = 0L
+                var totalSoldCount = 0
+                var soldTodayCount = 0
+                var newOrdersCount = 0
+                val bookSoldMap = mutableMapOf<String, Int>()
+
+                val startOfToday = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+
                 // 3. Tính toán doanh thu
                 distinctOrders.forEach { order ->
-                    // Chấp nhận tất cả trạng thái trừ "Đã hủy"
-                    if (order.status.trim().lowercase() != "đã hủy") {
+                    val status = order.status.trim().lowercase()
+                    if (status != "đã hủy") {
+                        var orderContribution = 0L
+                        
                         order.items.forEach { item ->
-                            // KIỂM TRA THÔNG MINH: 
-                            // Nếu ownerId khớp HOẶC (ownerId trống VÀ bookId nằm trong danh sách sách của tôi)
-                            if (item.ownerId == userId || (item.ownerId.isEmpty() && myBookIds.contains(item.bookId))) {
-                                revenue += item.price * item.quantity
-                                soldCount += item.quantity
+                            // KIỂM TRA: Nếu ownerId khớp HOẶC bookId nằm trong danh sách sách của mình
+                            val isMyItem = item.ownerId == userId || myBookIds.contains(item.bookId)
+                            
+                            if (isMyItem) {
+                                val itemTotal = item.price * item.quantity
+                                orderContribution += itemTotal
+                                totalSoldCount += item.quantity
+                                
+                                bookSoldMap[item.bookId] = (bookSoldMap[item.bookId] ?: 0) + item.quantity
+                                
+                                if (order.createdAt >= startOfToday) {
+                                    soldTodayCount += item.quantity
+                                }
+                            }
+                        }
+
+                        if (orderContribution > 0) {
+                            totalRev += orderContribution
+                            when (status) {
+                                "đã giao", "thành công" -> deliveredRev += orderContribution
+                                "chờ xác nhận" -> {
+                                    pendingRev += orderContribution
+                                    newOrdersCount++
+                                }
+                                else -> pendingRev += orderContribution
                             }
                         }
                     }
                 }
                 
+                Log.d("MyShopVM", "Calculation Result: TotalRev=$totalRev, Sold=$totalSoldCount")
+
                 _uiState.update { it.copy(
-                    myBooks = books,
-                    totalRevenue = revenue,
-                    totalSold = soldCount,
+                    myBooks = myBooks,
+                    bookSoldCounts = bookSoldMap,
+                    totalRevenue = totalRev,
+                    deliveredRevenue = deliveredRev,
+                    pendingRevenue = pendingRev,
+                    totalSold = totalSoldCount,
+                    soldToday = soldTodayCount,
+                    newOrdersCount = newOrdersCount,
                     isLoading = false
                 ) }
             } catch (e: Exception) {
+                Log.e("MyShopVM", "Global Load Error: ${e.message}")
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
         }
@@ -113,8 +176,7 @@ class MyShopViewModel(
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isUpdating = true) }
-            val result = authRepository.updateShopName(userId, newName)
-            if (result.isSuccess) {
+            if (authRepository.updateShopName(userId, newName).isSuccess) {
                 loadUserData()
             }
             _uiState.update { it.copy(isUpdating = false) }
@@ -128,14 +190,9 @@ class MyShopViewModel(
             val uploadResult = cloudinaryRepository.uploadImage(imageUri, "accound")
             if (uploadResult.isSuccess) {
                 val avatarUrl = uploadResult.getOrNull()
-                if (avatarUrl != null) {
-                    val updateResult = authRepository.updateShopAvatarUrl(userId, avatarUrl)
-                    if (updateResult.isSuccess) {
-                        loadUserData()
-                    }
+                if (avatarUrl != null && authRepository.updateShopAvatarUrl(userId, avatarUrl).isSuccess) {
+                    loadUserData()
                 }
-            } else {
-                 _uiState.update { it.copy(errorMessage = "Lỗi upload: ${uploadResult.exceptionOrNull()?.message}") }
             }
             _uiState.update { it.copy(isUpdating = false) }
         }
@@ -143,8 +200,7 @@ class MyShopViewModel(
 
     fun deleteBook(bookId: String) {
         viewModelScope.launch {
-            val result = bookRepository.deleteBook(bookId)
-            if (result.isSuccess) {
+            if (bookRepository.deleteBook(bookId).isSuccess) {
                 loadMyShopData()
             }
         }

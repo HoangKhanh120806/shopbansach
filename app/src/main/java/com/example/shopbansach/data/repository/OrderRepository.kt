@@ -17,10 +17,10 @@ class OrderRepository {
             val docRef = ordersCollection.document()
             val orderWithId = order.copy(id = docRef.id)
             docRef.set(orderWithId).await()
-            Log.d("OrderRepository", "Order created successfully: ${docRef.id}")
+            Log.d("OrderRepo", "Order created: ${docRef.id} with sellerIds: ${order.sellerIds}")
             Result.success(docRef.id)
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Error creating order", e)
+            Log.e("OrderRepo", "Error creating order", e)
             Result.failure(e)
         }
     }
@@ -28,11 +28,8 @@ class OrderRepository {
     suspend fun getOrderById(orderId: String): Order? {
         return try {
             val document = ordersCollection.document(orderId).get().await()
-            val order = document.toObject(Order::class.java)
-            if (order == null) Log.e("OrderRepository", "Order not found: $orderId")
-            order
+            document.toObject(Order::class.java)
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Error getting order by ID", e)
             null
         }
     }
@@ -41,56 +38,69 @@ class OrderRepository {
         return try {
             val snapshot = ordersCollection
                 .whereEqualTo("userId", userId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get().await()
-            snapshot.toObjects(Order::class.java)
+            snapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Error getting user orders. Falling back to unsorted.")
-            try {
-                val fallbackSnapshot = ordersCollection.whereEqualTo("userId", userId).get().await()
-                fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
-            } catch (fallbackEx: Exception) {
-                emptyList()
-            }
+            emptyList()
         }
     }
 
     /**
-     * Tối ưu hóa: Chỉ lấy các đơn hàng có chứa sản phẩm của seller này
+     * Lấy đơn hàng cho Seller - Phối hợp nhiều nguồn tìm kiếm
      */
     suspend fun getOrdersBySeller(sellerId: String): List<Order> {
-        return try {
+        val resultOrders = mutableSetOf<Order>()
+        
+        // Nguồn 1: Tìm qua sellerIds (Cách chuẩn cho đơn mới)
+        try {
             val snapshot = ordersCollection
                 .whereArrayContains("sellerIds", sellerId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get().await()
-            snapshot.toObjects(Order::class.java)
+            val orders = snapshot.toObjects(Order::class.java)
+            resultOrders.addAll(orders)
+            Log.d("OrderRepo", "Source 1 (sellerIds) found: ${orders.size}")
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Error getting seller orders. Falling back to filter.")
+            Log.e("OrderRepo", "Source 1 failed: ${e.message}")
+        }
+
+        // Nguồn 2: Tìm qua userId (Nếu shop tự mua hàng của mình để test)
+        try {
+            val snapshot = ordersCollection
+                .whereEqualTo("userId", sellerId)
+                .get().await()
+            val orders = snapshot.toObjects(Order::class.java)
+            // Lọc lại: chỉ lấy đơn nào thực sự có sách của shop này
+            val relevantOrders = orders.filter { order ->
+                order.items.any { it.ownerId == sellerId }
+            }
+            resultOrders.addAll(relevantOrders)
+            Log.d("OrderRepo", "Source 2 (userSelf) found: ${relevantOrders.size}")
+        } catch (e: Exception) { }
+
+        // Nguồn 3: Quét toàn bộ (Nếu là Admin hoặc đơn hàng cũ chưa có sellerIds)
+        if (resultOrders.isEmpty()) {
             try {
-                // Fallback nếu chưa có index cho array-contains + orderBy
-                val fallbackSnapshot = ordersCollection.whereArrayContains("sellerIds", sellerId).get().await()
-                fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
-            } catch (fallbackEx: Exception) {
-                emptyList()
+                val snapshot = ordersCollection.limit(100).get().await()
+                val allOrders = snapshot.toObjects(Order::class.java)
+                val filtered = allOrders.filter { order ->
+                    order.items.any { it.ownerId == sellerId } || order.sellerIds.contains(sellerId)
+                }
+                resultOrders.addAll(filtered)
+                Log.d("OrderRepo", "Source 3 (Scan) found: ${filtered.size}")
+            } catch (e: Exception) {
+                Log.e("OrderRepo", "Source 3 failed (Permissions?): ${e.message}")
             }
         }
+
+        return resultOrders.toList().sortedByDescending { it.createdAt }
     }
 
     suspend fun getAllOrders(): List<Order> {
         return try {
-            val snapshot = ordersCollection
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .get().await()
-            snapshot.toObjects(Order::class.java)
+            val snapshot = ordersCollection.get().await()
+            snapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Error getting all orders. Falling back to unsorted.")
-            try {
-                val fallbackSnapshot = ordersCollection.get().await()
-                fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
-            } catch (fallbackEx: Exception) {
-                emptyList()
-            }
+            emptyList()
         }
     }
 

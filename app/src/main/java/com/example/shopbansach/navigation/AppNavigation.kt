@@ -110,7 +110,7 @@ fun AppNavigation(
                 BookDetailScreen(
                     navController = navController, 
                     bookId = bookId,
-                    cartViewModel = cartViewModel // Truyền shared viewModel vào đây
+                    cartViewModel = cartViewModel
                 )
             }
 
@@ -204,6 +204,10 @@ fun AppNavigation(
 
             composable(route = Screen.OrderHistory.route) {
                 OrderHistoryScreen(navController = navController)
+            }
+
+            composable(route = Screen.SellerOrderManage.route) {
+                SellerOrderManageScreen(navController = navController)
             }
         }
     }

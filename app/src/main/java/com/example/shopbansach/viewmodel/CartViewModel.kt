@@ -101,13 +101,9 @@ class CartViewModel(
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
             } else {
-                _actionStateError(result.exceptionOrNull()?.message ?: "Lỗi thêm vào giỏ")
+                _uiState.update { it.copy(actionState = CartActionState.Error(result.exceptionOrNull()?.message ?: "Lỗi thêm vào giỏ")) }
             }
         }
-    }
-
-    private fun _actionStateError(msg: String) {
-        _uiState.update { it.copy(actionState = CartActionState.Error(msg)) }
     }
 
     fun updateQuantity(bookId: String, newQuantity: Int) {
@@ -176,42 +172,56 @@ class CartViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
-                
-                // Tối ưu: Lấy danh sách ownerId duy nhất để lưu vào order
-                val sellerIds = checkoutItems.map { it.ownerId }.distinct().filter { it.isNotEmpty() }
 
                 val orderId = firestore.runTransaction { transaction ->
-                    val bookRefs = checkoutItems.map { item ->
-                        val ref = firestore.collection("books").document(item.bookId)
-                        val snapshot = transaction.get(ref)
+                    val finalItems = mutableListOf<CartItem>()
+                    val sellerIds = mutableSetOf<String>()
+
+                    // 1. Kiểm tra tồn kho và lấy thông tin chủ shop CHÍNH XÁC từ database
+                    checkoutItems.forEach { item ->
+                        val bookRef = firestore.collection("books").document(item.bookId)
+                        val snapshot = transaction.get(bookRef)
+                        
                         val currentStock = snapshot.getLong("stock") ?: 0L
                         if (currentStock < item.quantity) {
                             throw Exception("Sản phẩm '${snapshot.getString("title")}' không đủ tồn kho")
                         }
-                        ref to (currentStock - item.quantity)
+                        
+                        val ownerId = snapshot.getString("ownerId") ?: ""
+                        
+                        // Cập nhật lại item với ownerId thực tế từ DB
+                        finalItems.add(item.copy(ownerId = ownerId))
+                        if (ownerId.isNotEmpty()) sellerIds.add(ownerId)
+
+                        // Cập nhật kho
+                        transaction.update(bookRef, "stock", currentStock - item.quantity)
                     }
 
+                    // 2. Tạo đơn hàng
                     val orderRef = firestore.collection("orders").document()
                     val finalOrderId = orderRef.id
                     
                     val newOrder = Order(
                         id = finalOrderId,
                         userId = currentUserId,
-                        items = checkoutItems,
+                        items = finalItems, // Sử dụng danh sách đã được cập nhật ownerId
                         totalPrice = totalPrice,
                         shippingAddress = address,
                         paymentMethod = paymentMethod,
-                        sellerIds = sellerIds, // Lưu sellerIds để query nhanh
+                        sellerIds = sellerIds.toList(),
                         createdAt = System.currentTimeMillis()
                     )
 
-                    bookRefs.forEach { (ref, newStock) -> transaction.update(ref, "stock", newStock) }
                     transaction.set(orderRef, newOrder)
 
+                    // 3. Xóa khỏi giỏ hàng
                     if (!isBuyNow) {
                         val cartCollection = firestore.collection("users").document(currentUserId).collection("cart")
-                        checkoutItems.forEach { item -> transaction.delete(cartCollection.document(item.bookId)) }
+                        checkoutItems.forEach { item ->
+                            transaction.delete(cartCollection.document(item.bookId))
+                        }
                     }
+
                     finalOrderId
                 }.await()
 
