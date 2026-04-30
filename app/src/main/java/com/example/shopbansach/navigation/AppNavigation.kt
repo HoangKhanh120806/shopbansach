@@ -3,10 +3,10 @@ package com.example.shopbansach.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -15,6 +15,7 @@ import androidx.navigation.navArgument
 import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.view.*
+import com.example.shopbansach.viewmodel.CartViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -26,6 +27,9 @@ fun AppNavigation(
     val navController = rememberNavController()
     val authRepository = remember { AuthRepository() }
     val currentUser = FirebaseAuth.getInstance().currentUser
+    
+    // Shared ViewModel cho giỏ hàng
+    val cartViewModel: CartViewModel = viewModel()
     
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -71,7 +75,7 @@ fun AppNavigation(
             }
 
             composable(route = Screen.Cart.route) {
-                CartScreen(navController = navController)
+                CartScreen(navController = navController, viewModel = cartViewModel)
             }
 
             composable(
@@ -90,7 +94,24 @@ fun AppNavigation(
             ) { backStackEntry ->
                 val bookId = backStackEntry.arguments?.getString("bookId")
                 val quantity = backStackEntry.arguments?.getInt("quantity") ?: 1
-                CheckoutScreen(navController = navController, buyNowBookId = bookId, buyNowQuantity = quantity)
+                CheckoutScreen(
+                    navController = navController, 
+                    buyNowBookId = bookId, 
+                    buyNowQuantity = quantity,
+                    cartViewModel = cartViewModel
+                )
+            }
+
+            composable(
+                route = Screen.BookDetail.route,
+                arguments = listOf(navArgument("bookId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+                BookDetailScreen(
+                    navController = navController, 
+                    bookId = bookId,
+                    cartViewModel = cartViewModel // Truyền shared viewModel vào đây
+                )
             }
 
             composable(
@@ -133,14 +154,6 @@ fun AppNavigation(
                 EditBookScreen(navController = navController, bookId = bookId)
             }
 
-            composable(
-                route = Screen.BookDetail.route,
-                arguments = listOf(navArgument("bookId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
-                BookDetailScreen(navController = navController, bookId = bookId)
-            }
-
             composable(route = Screen.Login.route) {
                 LoginScreen(navController = navController)
             }
@@ -169,7 +182,6 @@ fun AppNavigation(
                 AdminOrderManageScreen(navController = navController)
             }
 
-            // Route cho Địa chỉ
             composable(route = Screen.AddressList.route) {
                 AddressListScreen(navController = navController)
             }

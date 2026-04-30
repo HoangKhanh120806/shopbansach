@@ -60,13 +60,20 @@ fun CheckoutScreen(
     var city by remember { mutableStateOf("") }
     var selectedPayment by remember { mutableStateOf("cod") }
 
+    // Hiển thị lỗi nếu có
+    LaunchedEffect(cartUiState.errorMessage) {
+        cartUiState.errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            cartViewModel.resetActionState()
+        }
+    }
+
     // Load dữ liệu ban đầu
     LaunchedEffect(Unit) {
         addressViewModel.loadAddresses()
         if (buyNowBookId != null) {
             bookViewModel.getBookDetail(buyNowBookId)
         } else {
-            // Đảm bảo giỏ hàng được tải mới nhất nếu thanh toán từ giỏ
             cartViewModel.loadCartItems()
         }
     }
@@ -98,7 +105,6 @@ fun CheckoutScreen(
                 )
             )
         } else if (buyNowBookId == null) {
-            // Lọc các sản phẩm đã được tích chọn trong giỏ hàng
             cartUiState.cartItems.filter { it.isSelected }
         } else {
             emptyList()
@@ -141,23 +147,29 @@ fun CheckoutScreen(
                         PrimaryButton(
                             text = "Xác nhận đặt hàng",
                             onClick = {
-                                if (fullName.isEmpty() || phoneNumber.isEmpty() || addressDetail.isEmpty()) {
-                                    Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin giao hàng", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    cartViewModel.processCheckout(
-                                        checkoutItems = checkoutItems,
-                                        isBuyNow = buyNowBookId != null,
-                                        address = Address(
-                                            fullName = fullName,
-                                            phoneNumber = phoneNumber,
-                                            addressDetail = addressDetail,
-                                            city = city
-                                        ),
-                                        paymentMethod = selectedPayment,
-                                        totalPrice = total
-                                    ) { orderId ->
-                                        navController.navigate(Screen.ThankYou.createRoute(orderId)) {
-                                            popUpTo(Screen.Home.route)
+                                when {
+                                    fullName.isEmpty() || phoneNumber.isEmpty() || addressDetail.isEmpty() -> {
+                                        Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin giao hàng", Toast.LENGTH_SHORT).show()
+                                    }
+                                    phoneNumber.length < 10 -> {
+                                        Toast.makeText(context, "Số điện thoại không hợp lệ", Toast.LENGTH_SHORT).show()
+                                    }
+                                    else -> {
+                                        cartViewModel.processCheckout(
+                                            checkoutItems = checkoutItems,
+                                            isBuyNow = buyNowBookId != null,
+                                            address = Address(
+                                                fullName = fullName,
+                                                phoneNumber = phoneNumber,
+                                                addressDetail = addressDetail,
+                                                city = city
+                                            ),
+                                            paymentMethod = selectedPayment,
+                                            totalPrice = total
+                                        ) { orderId ->
+                                            navController.navigate(Screen.ThankYou.createRoute(orderId)) {
+                                                popUpTo(Screen.Home.route) { inclusive = false }
+                                            }
                                         }
                                     }
                                 }
@@ -171,22 +183,20 @@ fun CheckoutScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        // Logic hiển thị Loading đồng bộ
         val isDataLoading = if (buyNowBookId != null) bookUiState.isLoading else cartUiState.isLoading
 
-        if (isDataLoading) {
+        if (isDataLoading && checkoutItems.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (checkoutItems.isEmpty()) {
-            // Trường hợp không có sản phẩm nào được chọn
+        } else if (checkoutItems.isEmpty() && !isDataLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.ShoppingCartCheckout, null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Không có sản phẩm nào để thanh toán", color = Color.Gray)
                     TextButton(onClick = { navController.popBackStack() }) {
-                        Text("Quay lại giỏ hàng")
+                        Text("Quay lại")
                     }
                 }
             }
@@ -200,10 +210,9 @@ fun CheckoutScreen(
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Địa chỉ
                 SectionTitle("Địa chỉ giao hàng") {
                     Text(
-                        "Sửa địa chỉ",
+                        "Chọn địa chỉ",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -221,7 +230,6 @@ fun CheckoutScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Thanh toán
                 SectionTitle("Phương thức thanh toán")
                 Spacer(modifier = Modifier.height(12.dp))
                 PaymentOption(selectedPayment == "cod", { selectedPayment = "cod" }, { Icon(Icons.Default.CreditCard, null) }, "Thanh toán khi nhận hàng (COD)", null)
@@ -229,7 +237,6 @@ fun CheckoutScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Chi tiết hóa đơn
                 SectionTitle("Chi tiết đơn hàng")
                 CustomCard(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)

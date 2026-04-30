@@ -10,11 +10,13 @@ import com.example.shopbansach.data.repository.CartRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
 import com.example.shopbansach.data.repository.OrderRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 sealed class CartActionState {
     object Idle : CartActionState()
@@ -25,7 +27,7 @@ sealed class CartActionState {
 
 data class CartUiState(
     val cartItems: List<CartItem> = emptyList(),
-    val isLoading: Boolean = true, // Mặc định là true để tránh flash màn hình trống
+    val isLoading: Boolean = false,
     val actionState: CartActionState = CartActionState.Idle,
     val errorMessage: String? = null
 )
@@ -38,6 +40,9 @@ class CartViewModel(
 
     private val _uiState = MutableStateFlow(CartUiState())
     val uiState: StateFlow<CartUiState> = _uiState.asStateFlow()
+
+    private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     init {
         loadCartItems()
@@ -172,35 +177,56 @@ class CartViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: throw Exception("Chưa đăng nhập")
-
-                for (item in checkoutItems) {
-                    val result = bookRepository.updateStockWithCheck(item.bookId, item.quantity)
-                    if (result.isFailure) {
-                        throw result.exceptionOrNull() ?: Exception("Sản phẩm ${item.title} không đủ tồn kho")
+                val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
+                
+                val orderId = firestore.runTransaction { transaction ->
+                    val bookRefs = checkoutItems.map { item ->
+                        val ref = firestore.collection("books").document(item.bookId)
+                        val snapshot = transaction.get(ref)
+                        
+                        val currentStock = snapshot.getLong("stock") ?: 0L
+                        if (currentStock < item.quantity) {
+                            throw Exception("Sản phẩm '${snapshot.getString("title")}' không đủ tồn kho")
+                        }
+                        
+                        ref to (currentStock - item.quantity)
                     }
-                }
 
-                val newOrder = Order(
-                    userId = currentUserId,
-                    items = checkoutItems,
-                    totalPrice = totalPrice,
-                    shippingAddress = address,
-                    paymentMethod = paymentMethod
-                )
-                
-                val orderResult = orderRepository.createOrder(newOrder)
-                val orderId = orderResult.getOrThrow()
+                    val orderRef = firestore.collection("orders").document()
+                    val finalOrderId = orderRef.id
+                    
+                    val newOrder = Order(
+                        id = finalOrderId,
+                        userId = currentUserId,
+                        items = checkoutItems,
+                        totalPrice = totalPrice,
+                        shippingAddress = address,
+                        paymentMethod = paymentMethod,
+                        createdAt = System.currentTimeMillis()
+                    )
 
-                val purchasedBookIds = checkoutItems.map { it.bookId }
-                repository.removeItemsFromCart(purchasedBookIds)
-                
+                    bookRefs.forEach { (ref, newStock) ->
+                        transaction.update(ref, "stock", newStock)
+                    }
+                    
+                    transaction.set(orderRef, newOrder)
+
+                    // KHÔI PHỤC LOGIC XÓA KHỎI GIỎ HÀNG SAU KHI THANH TOÁN
+                    if (!isBuyNow) {
+                        val cartCollection = firestore.collection("users").document(currentUserId).collection("cart")
+                        checkoutItems.forEach { item ->
+                            transaction.delete(cartCollection.document(item.bookId))
+                        }
+                    }
+
+                    finalOrderId
+                }.await()
+
                 loadCartItems()
-
                 _uiState.update { it.copy(isLoading = false) }
                 onComplete(orderId)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Đã xảy ra lỗi khi đặt hàng") }
             }
         }
     }
