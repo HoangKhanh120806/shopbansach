@@ -17,9 +17,30 @@ class AddressRepository {
         return try {
             val collection = getAddressCollection() ?: return emptyList()
             val snapshot = collection.get().await()
-            snapshot.toObjects(Address::class.java)
+            snapshot.toObjects(Address::class.java).sortedByDescending { it.isDefault }
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    suspend fun setDefaultAddress(addressId: String): Result<Unit> {
+        return try {
+            val collection = getAddressCollection() ?: throw Exception("User not logged in")
+            val batch = firestore.batch()
+            
+            // 1. Tìm tất cả địa chỉ đang là mặc định để gỡ bỏ
+            val snapshot = collection.whereEqualTo("isDefault", true).get().await()
+            for (doc in snapshot.documents) {
+                batch.update(doc.reference, "isDefault", false)
+            }
+            
+            // 2. Thiết lập địa chỉ mới làm mặc định
+            batch.update(collection.document(addressId), "isDefault", true)
+            
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -28,7 +49,6 @@ class AddressRepository {
             val collection = getAddressCollection() ?: throw Exception("User not logged in")
             val batch = firestore.batch()
 
-            // Nếu là địa chỉ mặc định, bỏ mặc định tất cả các cái khác TRONG CÙNG BATCH
             if (address.isDefault) {
                 val snapshot = collection.whereEqualTo("isDefault", true).get().await()
                 for (doc in snapshot.documents) {
@@ -38,11 +58,9 @@ class AddressRepository {
                 }
             }
 
-            // Thêm lệnh lưu địa chỉ mới vào batch
             val docRef = collection.document(address.id)
             batch.set(docRef, address)
 
-            // Thực thi toàn bộ thay đổi một lần duy nhất
             batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {

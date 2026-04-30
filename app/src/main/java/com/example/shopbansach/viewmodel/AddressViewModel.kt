@@ -35,6 +35,18 @@ class AddressViewModel(private val repository: AddressRepository = AddressReposi
         }
     }
 
+    fun setDefaultAddress(addressId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val result = repository.setDefaultAddress(addressId)
+            if (result.isSuccess) {
+                loadAddresses()
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = result.exceptionOrNull()?.message) }
+            }
+        }
+    }
+
     fun saveAddress(
         id: String?,
         fullName: String,

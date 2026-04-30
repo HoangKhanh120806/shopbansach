@@ -1,6 +1,5 @@
 package com.example.shopbansach.view
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,10 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shopbansach.data.model.Address
 import com.example.shopbansach.navigation.Screen
+import com.example.shopbansach.utils.CustomCard
 import com.example.shopbansach.viewmodel.AddressViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +42,7 @@ fun AddressListScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Địa chỉ của tôi", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
+                title = { Text("Địa chỉ nhận hàng", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -55,13 +52,13 @@ fun AddressListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { navController.navigate(Screen.AddEditAddress.createRoute("new")) },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Thêm địa chỉ")
-            }
+                contentColor = Color.White,
+                icon = { Icon(Icons.Default.Add, null) },
+                text = { Text("Thêm địa chỉ mới") }
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -72,67 +69,106 @@ fun AddressListScreen(
         } else if (uiState.addresses.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-                    Text("Bạn chưa có địa chỉ nào", color = Color.Gray)
+                    Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Bạn chưa lưu địa chỉ nào", color = Color.Gray)
                 }
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(uiState.addresses) { address ->
+                items(uiState.addresses, key = { it.id }) { address ->
                     AddressItem(
                         address = address,
                         onEdit = { navController.navigate(Screen.AddEditAddress.createRoute(address.id)) },
-                        onDelete = { viewModel.deleteAddress(address.id) }
+                        onDelete = { viewModel.deleteAddress(address.id) },
+                        onSetDefault = { 
+                            if (!address.isDefault) {
+                                viewModel.setDefaultAddress(address.id)
+                            }
+                        }
                     )
                 }
+                item { Spacer(Modifier.height(80.dp)) }
             }
         }
     }
 }
 
 @Composable
-fun AddressItem(address: Address, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+fun AddressItem(
+    address: Address, 
+    onEdit: () -> Unit, 
+    onDelete: () -> Unit,
+    onSetDefault: () -> Unit
+) {
+    CustomCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { if (!address.isDefault) onSetDefault() } // CẢ THẺ ĐỀU NHẤN ĐƯỢC
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = address.fullName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                if (address.isDefault) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically, 
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = if (address.isDefault) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                        contentDescription = "Select Default",
+                        tint = if (address.isDefault) MaterialTheme.colorScheme.primary else Color.Gray,
+                        modifier = Modifier.size(24.dp) // Icon to hơn
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
                         Text(
-                            text = "Mặc định",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            text = address.fullName, 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 16.sp,
+                            color = if (address.isDefault) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
+                        Text(text = address.phoneNumber, color = Color.Gray, fontSize = 14.sp)
+                    }
+                }
+                
+                Row {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-            Text(text = address.phoneNumber, color = Color.Gray, fontSize = 14.sp)
-            Text(text = "${address.addressDetail}, ${address.city}", modifier = Modifier.padding(top = 4.dp), fontSize = 14.sp)
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "${address.addressDetail}, ${address.city}",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 36.dp)
+            )
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(" Sửa")
-                }
-                TextButton(onClick = onDelete) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Red)
-                    Text(" Xóa", color = Color.Red)
+            if (address.isDefault) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.padding(start = 36.dp, top = 8.dp)
+                ) {
+                    Text(
+                        text = "MẶC ĐỊNH",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
                 }
             }
         }
