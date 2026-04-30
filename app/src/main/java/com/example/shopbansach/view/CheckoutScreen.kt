@@ -101,6 +101,7 @@ fun CheckoutScreen(
                     imageUrl = bookUiState.book!!.imageUrl,
                     quantity = buyNowQuantity,
                     author = bookUiState.book!!.author,
+                    ownerId = bookUiState.book!!.ownerId, // FIX: Thêm ownerId vào đây
                     isSelected = true
                 )
             )

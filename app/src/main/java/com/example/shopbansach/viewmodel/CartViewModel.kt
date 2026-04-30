@@ -68,7 +68,8 @@ class CartViewModel(
                             title = book.title,
                             price = book.price,
                             imageUrl = book.imageUrl,
-                            author = book.author
+                            author = book.author,
+                            ownerId = book.ownerId // Cập nhật ownerId từ Book
                         )
                     } else {
                         item
@@ -91,6 +92,7 @@ class CartViewModel(
                 price = book.price,
                 imageUrl = book.imageUrl,
                 author = book.author,
+                ownerId = book.ownerId, // Thêm ownerId khi thêm vào giỏ
                 quantity = quantity,
                 isSelected = forceSelected
             )
@@ -211,7 +213,6 @@ class CartViewModel(
                     
                     transaction.set(orderRef, newOrder)
 
-                    // KHÔI PHỤC LOGIC XÓA KHỎI GIỎ HÀNG SAU KHI THANH TOÁN
                     if (!isBuyNow) {
                         val cartCollection = firestore.collection("users").document(currentUserId).collection("cart")
                         checkoutItems.forEach { item ->

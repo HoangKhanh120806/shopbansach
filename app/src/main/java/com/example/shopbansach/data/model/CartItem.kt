@@ -3,12 +3,33 @@ package com.example.shopbansach.data.model
 import com.google.firebase.firestore.PropertyName
 
 data class CartItem(
-    val bookId: String = "",
-    val title: String = "",
-    val price: Long = 0,
-    val imageUrl: String? = null,
-    val quantity: Int = 1,
-    val author: String = "",
+    @get:PropertyName("bookId")
+    @set:PropertyName("bookId")
+    var bookId: String = "",
+
+    @get:PropertyName("title")
+    @set:PropertyName("title")
+    var title: String = "",
+
+    @get:PropertyName("price")
+    @set:PropertyName("price")
+    var price: Long = 0,
+
+    @get:PropertyName("imageUrl")
+    @set:PropertyName("imageUrl")
+    var imageUrl: String? = null,
+
+    @get:PropertyName("quantity")
+    @set:PropertyName("quantity")
+    var quantity: Int = 1,
+
+    @get:PropertyName("author")
+    @set:PropertyName("author")
+    var author: String = "",
+
+    @get:PropertyName("ownerId")
+    @set:PropertyName("ownerId")
+    var ownerId: String = "",
     
     @get:PropertyName("isSelected")
     @set:PropertyName("isSelected")

@@ -1,13 +1,16 @@
 package com.example.shopbansach.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.Order
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.CloudinaryRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import com.example.shopbansach.data.repository.OrderRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +31,8 @@ data class MyShopUiState(
 class MyShopViewModel(
     private val cloudinaryRepository: CloudinaryRepository,
     private val bookRepository: FirebaseBookRepository = FirebaseBookRepository(),
-    private val authRepository: AuthRepository = AuthRepository()
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val orderRepository: OrderRepository = OrderRepository()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyShopUiState())
     val uiState: StateFlow<MyShopUiState> = _uiState.asStateFlow()
@@ -40,8 +44,8 @@ class MyShopViewModel(
     }
 
     fun loadData() {
-        loadMyShopBooks()
         loadUserData()
+        loadMyShopData()
     }
 
     private fun loadUserData() {
@@ -51,21 +55,52 @@ class MyShopViewModel(
         }
     }
 
-    fun loadMyShopBooks() {
+    private fun loadMyShopData() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
+                // 1. Lấy danh sách sách của shop
                 val books = bookRepository.getBooksByOwner(userId)
+                val myBookIds = books.map { it.id }.toSet()
+
+                // 2. Lấy đơn hàng (Cố gắng lấy từ cả 2 nguồn để đảm bảo không sót)
+                val allOrders = mutableListOf<Order>()
+                try {
+                    allOrders.addAll(orderRepository.getAllOrders())
+                } catch (e: Exception) {
+                    Log.e("MyShopViewModel", "Error fetching all orders, trying user orders")
+                }
                 
-                // Giả định doanh thu và số lượng bán
-                val revenue = books.sumOf { it.price * (it.stock / 2) } 
-                val sold = books.sumOf { it.stock / 3 } 
+                // Luôn lấy thêm đơn hàng của chính user (quan trọng khi user tự mua hàng để test)
+                val userOrders = orderRepository.getOrdersByUser(userId)
+                allOrders.addAll(userOrders)
+                
+                // Loại bỏ các đơn hàng trùng lặp
+                val distinctOrders = allOrders.distinctBy { it.id }
+                
+                var revenue = 0L
+                var soldCount = 0
+                
+                // 3. Tính toán doanh thu
+                distinctOrders.forEach { order ->
+                    // Chấp nhận tất cả trạng thái trừ "Đã hủy"
+                    if (order.status.trim().lowercase() != "đã hủy") {
+                        order.items.forEach { item ->
+                            // KIỂM TRA THÔNG MINH: 
+                            // Nếu ownerId khớp HOẶC (ownerId trống VÀ bookId nằm trong danh sách sách của tôi)
+                            if (item.ownerId == userId || (item.ownerId.isEmpty() && myBookIds.contains(item.bookId))) {
+                                revenue += item.price * item.quantity
+                                soldCount += item.quantity
+                            }
+                        }
+                    }
+                }
                 
                 _uiState.update { it.copy(
-                    myBooks = books, 
+                    myBooks = books,
                     totalRevenue = revenue,
-                    totalSold = sold,
+                    totalSold = soldCount,
                     isLoading = false
                 ) }
             } catch (e: Exception) {
@@ -90,21 +125,17 @@ class MyShopViewModel(
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isUpdating = true) }
-            
-            // Upload ảnh lên Cloudinary thay vì Firebase Storage
-            val uploadResult = cloudinaryRepository.uploadImage(imageUri, "accound") // Sử dụng preset 'accound' như trong CloudinaryRepository.kt
-            
+            val uploadResult = cloudinaryRepository.uploadImage(imageUri, "accound")
             if (uploadResult.isSuccess) {
                 val avatarUrl = uploadResult.getOrNull()
                 if (avatarUrl != null) {
-                    // Cập nhật shopAvatarUrl vào User Profile trong Firestore
                     val updateResult = authRepository.updateShopAvatarUrl(userId, avatarUrl)
                     if (updateResult.isSuccess) {
                         loadUserData()
                     }
                 }
             } else {
-                 _uiState.update { it.copy(errorMessage = "Lỗi upload Cloudinary: ${uploadResult.exceptionOrNull()?.message}") }
+                 _uiState.update { it.copy(errorMessage = "Lỗi upload: ${uploadResult.exceptionOrNull()?.message}") }
             }
             _uiState.update { it.copy(isUpdating = false) }
         }
@@ -114,7 +145,7 @@ class MyShopViewModel(
         viewModelScope.launch {
             val result = bookRepository.deleteBook(bookId)
             if (result.isSuccess) {
-                loadMyShopBooks()
+                loadMyShopData()
             }
         }
     }

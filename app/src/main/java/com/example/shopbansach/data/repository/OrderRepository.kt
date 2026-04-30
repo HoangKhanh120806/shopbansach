@@ -39,15 +39,13 @@ class OrderRepository {
 
     suspend fun getOrdersByUser(userId: String): List<Order> {
         return try {
-            // Lưu ý: Query này cần Composite Index (userId: ASC, createdAt: DESC)
             val snapshot = ordersCollection
                 .whereEqualTo("userId", userId)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get().await()
             snapshot.toObjects(Order::class.java)
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Error getting user orders. Check if Index is created.", e)
-            // Fallback: Thử lấy không có orderBy nếu chưa có Index
+            Log.e("OrderRepository", "Error getting user orders. Falling back to unsorted.")
             try {
                 val fallbackSnapshot = ordersCollection.whereEqualTo("userId", userId).get().await()
                 fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
@@ -64,7 +62,14 @@ class OrderRepository {
                 .get().await()
             snapshot.toObjects(Order::class.java)
         } catch (e: Exception) {
-            emptyList()
+            Log.e("OrderRepository", "Error getting all orders. Falling back to unsorted.")
+            try {
+                // FALLBACK: Lấy dữ liệu không sắp xếp nếu thiếu Index
+                val fallbackSnapshot = ordersCollection.get().await()
+                fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
+            } catch (fallbackEx: Exception) {
+                emptyList()
+            }
         }
     }
 
