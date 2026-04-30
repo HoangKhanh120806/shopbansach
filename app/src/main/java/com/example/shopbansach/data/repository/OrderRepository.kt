@@ -55,6 +55,28 @@ class OrderRepository {
         }
     }
 
+    /**
+     * Tối ưu hóa: Chỉ lấy các đơn hàng có chứa sản phẩm của seller này
+     */
+    suspend fun getOrdersBySeller(sellerId: String): List<Order> {
+        return try {
+            val snapshot = ordersCollection
+                .whereArrayContains("sellerIds", sellerId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get().await()
+            snapshot.toObjects(Order::class.java)
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Error getting seller orders. Falling back to filter.")
+            try {
+                // Fallback nếu chưa có index cho array-contains + orderBy
+                val fallbackSnapshot = ordersCollection.whereArrayContains("sellerIds", sellerId).get().await()
+                fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
+            } catch (fallbackEx: Exception) {
+                emptyList()
+            }
+        }
+    }
+
     suspend fun getAllOrders(): List<Order> {
         return try {
             val snapshot = ordersCollection
@@ -64,7 +86,6 @@ class OrderRepository {
         } catch (e: Exception) {
             Log.e("OrderRepository", "Error getting all orders. Falling back to unsorted.")
             try {
-                // FALLBACK: Lấy dữ liệu không sắp xếp nếu thiếu Index
                 val fallbackSnapshot = ordersCollection.get().await()
                 fallbackSnapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
             } catch (fallbackEx: Exception) {

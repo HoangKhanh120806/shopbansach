@@ -69,7 +69,7 @@ class CartViewModel(
                             price = book.price,
                             imageUrl = book.imageUrl,
                             author = book.author,
-                            ownerId = book.ownerId // Cập nhật ownerId từ Book
+                            ownerId = book.ownerId
                         )
                     } else {
                         item
@@ -92,7 +92,7 @@ class CartViewModel(
                 price = book.price,
                 imageUrl = book.imageUrl,
                 author = book.author,
-                ownerId = book.ownerId, // Thêm ownerId khi thêm vào giỏ
+                ownerId = book.ownerId,
                 quantity = quantity,
                 isSelected = forceSelected
             )
@@ -101,9 +101,13 @@ class CartViewModel(
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
             } else {
-                _uiState.update { it.copy(actionState = CartActionState.Error(result.exceptionOrNull()?.message ?: "Lỗi thêm vào giỏ")) }
+                _actionStateError(result.exceptionOrNull()?.message ?: "Lỗi thêm vào giỏ")
             }
         }
+    }
+
+    private fun _actionStateError(msg: String) {
+        _uiState.update { it.copy(actionState = CartActionState.Error(msg)) }
     }
 
     fun updateQuantity(bookId: String, newQuantity: Int) {
@@ -132,10 +136,7 @@ class CartViewModel(
                 }
             )
         }
-
-        viewModelScope.launch {
-            repository.toggleSelection(bookId, isSelected)
-        }
+        viewModelScope.launch { repository.toggleSelection(bookId, isSelected) }
     }
 
     fun toggleSelectAll(isSelected: Boolean) {
@@ -144,16 +145,12 @@ class CartViewModel(
                 cartItems = state.cartItems.map { it.copy(isSelected = isSelected) }
             )
         }
-
-        viewModelScope.launch {
-            repository.toggleAllSelection(isSelected)
-        }
+        viewModelScope.launch { repository.toggleAllSelection(isSelected) }
     }
 
     fun removeFromCart(bookId: String) {
         viewModelScope.launch {
-            val result = repository.removeFromCart(bookId)
-            if (result.isSuccess) {
+            if (repository.removeFromCart(bookId).isSuccess) {
                 loadCartItems()
             }
         }
@@ -161,8 +158,7 @@ class CartViewModel(
 
     fun clearCart() {
         viewModelScope.launch {
-            val result = repository.clearCart()
-            if (result.isSuccess) {
+            if (repository.clearCart().isSuccess) {
                 _uiState.update { it.copy(cartItems = emptyList()) }
             }
         }
@@ -181,16 +177,17 @@ class CartViewModel(
             try {
                 val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
                 
+                // Tối ưu: Lấy danh sách ownerId duy nhất để lưu vào order
+                val sellerIds = checkoutItems.map { it.ownerId }.distinct().filter { it.isNotEmpty() }
+
                 val orderId = firestore.runTransaction { transaction ->
                     val bookRefs = checkoutItems.map { item ->
                         val ref = firestore.collection("books").document(item.bookId)
                         val snapshot = transaction.get(ref)
-                        
                         val currentStock = snapshot.getLong("stock") ?: 0L
                         if (currentStock < item.quantity) {
                             throw Exception("Sản phẩm '${snapshot.getString("title")}' không đủ tồn kho")
                         }
-                        
                         ref to (currentStock - item.quantity)
                     }
 
@@ -204,22 +201,17 @@ class CartViewModel(
                         totalPrice = totalPrice,
                         shippingAddress = address,
                         paymentMethod = paymentMethod,
+                        sellerIds = sellerIds, // Lưu sellerIds để query nhanh
                         createdAt = System.currentTimeMillis()
                     )
 
-                    bookRefs.forEach { (ref, newStock) ->
-                        transaction.update(ref, "stock", newStock)
-                    }
-                    
+                    bookRefs.forEach { (ref, newStock) -> transaction.update(ref, "stock", newStock) }
                     transaction.set(orderRef, newOrder)
 
                     if (!isBuyNow) {
                         val cartCollection = firestore.collection("users").document(currentUserId).collection("cart")
-                        checkoutItems.forEach { item ->
-                            transaction.delete(cartCollection.document(item.bookId))
-                        }
+                        checkoutItems.forEach { item -> transaction.delete(cartCollection.document(item.bookId)) }
                     }
-
                     finalOrderId
                 }.await()
 
@@ -227,7 +219,7 @@ class CartViewModel(
                 _uiState.update { it.copy(isLoading = false) }
                 onComplete(orderId)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Đã xảy ra lỗi khi đặt hàng") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi thanh toán") }
             }
         }
     }
