@@ -6,6 +6,7 @@ import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,18 +24,33 @@ data class HomeUiState(
 class HomeViewModel : ViewModel() {
     private val bookRepository = FirebaseBookRepository()
     private val authRepository = AuthRepository()
+    private val auth = FirebaseAuth.getInstance()
     
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
+        // Tải dữ liệu ban đầu
         loadData()
+        
+        // Tối ưu: Lắng nghe trạng thái Auth để cập nhật UI ngay lập tức khi đăng nhập/đăng xuất
+        auth.addAuthStateListener { firebaseAuth ->
+            viewModelScope.launch {
+                if (firebaseAuth.currentUser != null) {
+                    val user = authRepository.getCurrentUserData()
+                    _uiState.update { it.copy(currentUser = user) }
+                } else {
+                    _uiState.update { it.copy(currentUser = null) }
+                }
+            }
+        }
     }
 
     fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
+                // Tải song song (nếu cần) nhưng ở đây tuần tự cho an toàn
                 val featured = bookRepository.getFeaturedBooks()
                 val arrivals = bookRepository.getNewArrivals()
                 val user = authRepository.getCurrentUserData()

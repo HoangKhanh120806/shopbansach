@@ -17,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Address
 import com.example.shopbansach.data.model.CartItem
 import com.example.shopbansach.navigation.Screen
@@ -60,7 +63,7 @@ fun CheckoutScreen(
     var city by remember { mutableStateOf("") }
     var selectedPayment by remember { mutableStateOf("cod") }
 
-    // Hiển thị lỗi nếu có
+    // Xử lý lỗi và Reset trạng thái
     LaunchedEffect(cartUiState.errorMessage) {
         cartUiState.errorMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
@@ -78,6 +81,7 @@ fun CheckoutScreen(
         }
     }
 
+    // Tự động điền địa chỉ mặc định khi danh sách tải xong
     LaunchedEffect(addressUiState.addresses) {
         val defaultAddress = addressUiState.addresses.find { it.isDefault } 
             ?: addressUiState.addresses.firstOrNull()
@@ -101,12 +105,12 @@ fun CheckoutScreen(
                     imageUrl = bookUiState.book!!.imageUrl,
                     quantity = buyNowQuantity,
                     author = bookUiState.book!!.author,
-                    ownerId = bookUiState.book!!.ownerId, // FIX: Thêm ownerId vào đây
+                    ownerId = bookUiState.book!!.ownerId,
                     isSelected = true
                 )
             )
         } else if (buyNowBookId == null) {
-            cartUiState.cartItems.filter { it.isSelected }
+            cartUiState.cartItems.filter { it.isSelected && it.stock > 0 }
         } else {
             emptyList()
         }
@@ -146,31 +150,25 @@ fun CheckoutScreen(
                             )
                         }
                         PrimaryButton(
-                            text = "Xác nhận đặt hàng",
+                            text = "XÁC NHẬN ĐẶT HÀNG",
                             onClick = {
-                                when {
-                                    fullName.isEmpty() || phoneNumber.isEmpty() || addressDetail.isEmpty() -> {
-                                        Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin giao hàng", Toast.LENGTH_SHORT).show()
-                                    }
-                                    phoneNumber.length < 10 -> {
-                                        Toast.makeText(context, "Số điện thoại không hợp lệ", Toast.LENGTH_SHORT).show()
-                                    }
-                                    else -> {
-                                        cartViewModel.processCheckout(
-                                            checkoutItems = checkoutItems,
-                                            isBuyNow = buyNowBookId != null,
-                                            address = Address(
-                                                fullName = fullName,
-                                                phoneNumber = phoneNumber,
-                                                addressDetail = addressDetail,
-                                                city = city
-                                            ),
-                                            paymentMethod = selectedPayment,
-                                            totalPrice = total
-                                        ) { orderId ->
-                                            navController.navigate(Screen.ThankYou.createRoute(orderId)) {
-                                                popUpTo(Screen.Home.route) { inclusive = false }
-                                            }
+                                if (fullName.isBlank() || phoneNumber.isBlank() || addressDetail.isBlank()) {
+                                    Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    cartViewModel.processCheckout(
+                                        checkoutItems = checkoutItems,
+                                        isBuyNow = buyNowBookId != null,
+                                        address = Address(
+                                            fullName = fullName,
+                                            phoneNumber = phoneNumber,
+                                            addressDetail = addressDetail,
+                                            city = city
+                                        ),
+                                        paymentMethod = selectedPayment,
+                                        totalPrice = total
+                                    ) { orderId ->
+                                        navController.navigate(Screen.ThankYou.createRoute(orderId)) {
+                                            popUpTo(Screen.Home.route) { inclusive = false }
                                         }
                                     }
                                 }
@@ -190,17 +188,6 @@ fun CheckoutScreen(
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (checkoutItems.isEmpty() && !isDataLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.ShoppingCartCheckout, null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Không có sản phẩm nào để thanh toán", color = Color.Gray)
-                    TextButton(onClick = { navController.popBackStack() }) {
-                        Text("Quay lại")
-                    }
-                }
-            }
         } else {
             Column(
                 modifier = Modifier
@@ -213,7 +200,7 @@ fun CheckoutScreen(
 
                 SectionTitle("Địa chỉ giao hàng") {
                     Text(
-                        "Chọn địa chỉ",
+                        "Thay đổi",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -225,7 +212,7 @@ fun CheckoutScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 CheckoutTextField(phoneNumber, { phoneNumber = it }, "Số điện thoại", KeyboardType.Phone, ImeAction.Next) { focusManager.moveFocus(FocusDirection.Down) }
                 Spacer(modifier = Modifier.height(8.dp))
-                CheckoutTextField(addressDetail, { addressDetail = it }, "Số nhà, tên đường...", imeAction = ImeAction.Next) { focusManager.moveFocus(FocusDirection.Down) }
+                CheckoutTextField(addressDetail, { addressDetail = it }, "Địa chỉ chi tiết", imeAction = ImeAction.Next) { focusManager.moveFocus(FocusDirection.Down) }
                 Spacer(modifier = Modifier.height(8.dp))
                 CheckoutTextField(city, { city = it }, "Tỉnh/Thành phố", imeAction = ImeAction.Done) { focusManager.clearFocus() }
 
@@ -233,42 +220,54 @@ fun CheckoutScreen(
 
                 SectionTitle("Phương thức thanh toán")
                 Spacer(modifier = Modifier.height(12.dp))
-                PaymentOption(selectedPayment == "cod", { selectedPayment = "cod" }, { Icon(Icons.Default.CreditCard, null) }, "Thanh toán khi nhận hàng (COD)", null)
-                PaymentOption(selectedPayment == "momo", { selectedPayment = "momo" }, { Box(Modifier.size(24.dp).background(Color(0xFFA50064), RoundedCornerShape(4.dp))) }, "Ví điện tử Momo", "Tiện lợi, nhanh chóng")
+                PaymentOption(selectedPayment == "cod", { selectedPayment = "cod" }, { Icon(Icons.Default.CreditCard, null) }, "Tiền mặt khi nhận hàng (COD)", null)
+                PaymentOption(selectedPayment == "momo", { selectedPayment = "momo" }, { Box(Modifier.size(24.dp).background(Color(0xFFA50064), RoundedCornerShape(4.dp))) }, "Ví điện tử Momo", "Khuyên dùng")
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 SectionTitle("Chi tiết đơn hàng")
-                CustomCard(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                ) {
+                CustomCard(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         checkoutItems.forEach { item ->
-                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.title, maxLines = 1, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                    Text("${item.quantity} x ${CurrencyUtils.formatPrice(item.price)}", fontSize = 12.sp, color = Color.Gray)
-                                }
-                                Text(CurrencyUtils.formatPrice(item.price * item.quantity), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                            }
+                            OrderItemRow(item)
                         }
                         
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
                         
-                        SummaryRow("Tạm tính", CurrencyUtils.formatPrice(subtotal))
+                        SummaryRow("Tiền hàng", CurrencyUtils.formatPrice(subtotal))
                         SummaryRow("Phí vận chuyển", CurrencyUtils.formatPrice(shipping))
                         
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Thành tiền", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                            Text(CurrencyUtils.formatPrice(total), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                            Text("Tổng cộng", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(CurrencyUtils.formatPrice(total), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
-                
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+}
+
+@Composable
+fun OrderItemRow(item: CartItem) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = item.imageUrl,
+            contentDescription = null,
+            modifier = Modifier.size(40.dp, 60.dp).clip(RoundedCornerShape(4.dp)),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.title, maxLines = 1, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("Số lượng: ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
+        }
+        Text(CurrencyUtils.formatPrice(item.price * item.quantity), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     }
 }
 
@@ -279,7 +278,7 @@ fun SectionTitle(title: String, trailing: @Composable (RowScope.() -> Unit)? = n
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         trailing?.invoke(this)
     }
 }
@@ -293,8 +292,8 @@ fun CheckoutTextField(value: String, onValueChange: (String) -> Unit, placeholde
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedContainerColor = MaterialTheme.colorScheme.surface
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(onAny = { onAction() })
@@ -308,7 +307,7 @@ fun PaymentOption(selected: Boolean, onClick: () -> Unit, icon: @Composable () -
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)),
         modifier = Modifier.padding(vertical = 4.dp).fillMaxWidth(),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = selected, onClick = onClick)
@@ -324,7 +323,7 @@ fun PaymentOption(selected: Boolean, onClick: () -> Unit, icon: @Composable () -
 
 @Composable
 fun SummaryRow(label: String, amount: String) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontSize = 14.sp, color = Color.Gray)
         Text(amount, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }

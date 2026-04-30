@@ -41,13 +41,13 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
         
-        searchJob?.cancel() // Hủy bỏ công việc tìm kiếm trước đó nếu có
+        searchJob?.cancel()
         
         if (query.isEmpty()) {
             _uiState.update { it.copy(searchResults = emptyList(), isLoading = false) }
         } else {
             searchJob = viewModelScope.launch {
-                delay(500) // Chờ 500ms trước khi thực hiện tìm kiếm (Debounce)
+                delay(500)
                 searchBooks(query)
             }
         }
@@ -57,5 +57,16 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
         _uiState.update { it.copy(isLoading = true) }
         val results = repository.searchBooks(query)
         _uiState.update { it.copy(searchResults = results, isLoading = false) }
+    }
+
+    // TÍNH NĂNG MỚI: Tìm kiếm theo thể loại
+    fun searchByCategory(category: String) {
+        _uiState.update { it.copy(searchQuery = category, isLoading = true) }
+        viewModelScope.launch {
+            // Giả sử repository chưa có hàm chuyên biệt, ta dùng hàm searchBooks hiện có 
+            // vì nó đã hỗ trợ tìm kiếm theo chuỗi (thể loại cũng là chuỗi)
+            val results = repository.searchBooks(category)
+            _uiState.update { it.copy(searchResults = results, isLoading = false) }
+        }
     }
 }

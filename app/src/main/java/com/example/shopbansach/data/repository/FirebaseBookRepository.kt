@@ -54,16 +54,12 @@ class FirebaseBookRepository {
         }
     }
 
-    /**
-     * Lấy danh sách sách theo danh sách ID (Tối ưu hóa giỏ hàng)
-     */
     suspend fun getBooksByIds(ids: List<String>): List<Book> {
         if (ids.isEmpty()) return emptyList()
         return try {
             val validIds = ids.filter { it.isNotEmpty() }.distinct()
             if (validIds.isEmpty()) return emptyList()
 
-            // Firestore whereIn hỗ trợ tối đa 30 ID mỗi lần truy vấn
             val chunks = validIds.chunked(30)
             val allBooks = mutableListOf<Book>()
             
@@ -96,13 +92,28 @@ class FirebaseBookRepository {
         }
     }
     
+    // Tìm kiếm chính xác theo thể loại
+    suspend fun getBooksByCategory(category: String): List<Book> {
+        return try {
+            val snapshot = booksCollection
+                .whereEqualTo("category", category)
+                .limit(50)
+                .get().await()
+            snapshot.toObjects(Book::class.java)
+        } catch (e: Exception) {
+            // Fallback: Tìm kiếm tương đối nếu không khớp hoàn toàn
+            manualSearchFallback(category)
+        }
+    }
+    
     private suspend fun manualSearchFallback(queryText: String): List<Book> {
         return try {
             val snapshot = booksCollection.limit(100).get().await()
             val allBooks = snapshot.toObjects(Book::class.java)
             allBooks.filter { 
                 it.title.contains(queryText, ignoreCase = true) || 
-                it.author.contains(queryText, ignoreCase = true) 
+                it.author.contains(queryText, ignoreCase = true) ||
+                it.category.contains(queryText, ignoreCase = true)
             }
         } catch (e: Exception) {
             emptyList()

@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,6 +38,7 @@ import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.ui.auth.AuthColors
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.SearchViewModel
 
 @Composable
@@ -151,13 +154,18 @@ fun SearchScreen(
                         }
 
                         item {
-                            CategoriesGrid()
+                            CategoriesGrid(onCategoryClick = { category ->
+                                viewModel.searchByCategory(category)
+                                focusManager.clearFocus()
+                            })
                         }
                     } else {
                         // Trạng thái đang tìm kiếm: Kết quả tìm kiếm
                         if (uiState.searchResults.isEmpty()) {
                             item {
-                                Text("Không tìm thấy kết quả phù hợp", color = AuthColors.Hint)
+                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
+                                    Text("Không tìm thấy kết quả phù hợp", color = AuthColors.Hint)
+                                }
                             }
                         } else {
                             items(uiState.searchResults) { book ->
@@ -168,7 +176,9 @@ fun SearchScreen(
                         }
                         
                         item {
-                            RecentSearchesSection()
+                            RecentSearchesSection(onTagClick = { tag ->
+                                viewModel.onSearchQueryChange(tag)
+                            })
                         }
                     }
                     
@@ -180,22 +190,24 @@ fun SearchScreen(
 }
 
 @Composable
-fun CategoriesGrid() {
+fun CategoriesGrid(onCategoryClick: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             CategoryCard(
                 title = "Văn học Kinh điển",
-                subtitle = "Sage",
+                subtitle = "Classic",
                 icon = Icons.AutoMirrored.Filled.MenuBook,
                 color = Color(0xFFAAB396),
-                modifier = Modifier.weight(1.1f)
+                modifier = Modifier.weight(1.1f),
+                onClick = { onCategoryClick("Văn học") }
             )
             CategoryCard(
                 title = "Nghệ thuật & Thiết kế",
-                subtitle = "Sand",
+                subtitle = "Art",
                 icon = Icons.Default.Brush,
                 color = Color(0xFFD6BFA9),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onClick = { onCategoryClick("Nghệ thuật") }
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -205,23 +217,26 @@ fun CategoriesGrid() {
             ) {
                 CategoryCard(
                     title = "Tâm lý học",
-                    subtitle = "Clay",
+                    subtitle = "Psychology",
                     icon = Icons.Default.Psychology,
-                    color = Color(0xFFC89C81)
+                    color = Color(0xFFC89C81),
+                    onClick = { onCategoryClick("Tâm lý") }
                 )
                 CategoryCard(
                     title = "Lịch sử & Văn hóa",
-                    subtitle = "Sage",
+                    subtitle = "History",
                     icon = Icons.Default.Museum,
-                    color = Color(0xFFAAB396)
+                    color = Color(0xFFAAB396),
+                    onClick = { onCategoryClick("Lịch sử") }
                 )
             }
             CategoryCard(
                 title = "Du ký & Hồi ký",
-                subtitle = "Sand",
+                subtitle = "Travel",
                 icon = Icons.Default.AutoStories,
                 color = Color(0xFFE4E2DD),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onClick = { onCategoryClick("Du ký") }
             )
         }
     }
@@ -233,14 +248,15 @@ fun CategoryCard(
     subtitle: String,
     icon: ImageVector,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     Box(
         modifier = modifier
             .height(100.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(color)
-            .clickable { /* TODO */ }
+            .clickable { onClick() }
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.align(Alignment.TopStart)) {
@@ -250,20 +266,20 @@ fun CategoryCard(
                     fontWeight = FontWeight.Bold,
                     lineHeight = 20.sp
                 ),
-                color = AuthColors.Primary
+                color = Color(0xFF2D2D2D) // Dark text for light backgrounds
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = AuthColors.Primary.copy(alpha = 0.6f)
+                color = Color(0xFF2D2D2D).copy(alpha = 0.6f)
             )
         }
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = AuthColors.Primary.copy(alpha = 0.3f),
+            tint = Color(0xFF2D2D2D).copy(alpha = 0.2f),
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .align(Alignment.BottomEnd)
         )
     }
@@ -271,80 +287,96 @@ fun CategoryCard(
 
 @Composable
 fun SearchItemRow(book: Book, onClick: () -> Unit) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
-        Box(
-            modifier = Modifier
-                .size(60.dp, 85.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(AuthColors.Surface)
+        Row(
+            modifier = Modifier.padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!book.imageUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = book.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text("COVER", modifier = Modifier.align(Alignment.Center), color = AuthColors.Hint, fontSize = 10.sp)
+            Box(
+                modifier = Modifier
+                    .size(60.dp, 85.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .shadow(1.dp, RoundedCornerShape(8.dp))
+            ) {
+                if (!book.imageUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = book.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column {
-            Text(
-                text = book.title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = FontFamily.Serif,
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = book.title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = book.author,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = CurrencyUtils.formatPrice(book.price),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
-                ),
-                color = AuthColors.Primary
-            )
-            Text(
-                text = book.author,
-                style = MaterialTheme.typography.bodyMedium,
-                color = AuthColors.Hint
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }
 }
 
 @Composable
-fun RecentSearchesSection() {
+fun RecentSearchesSection(onTagClick: (String) -> Unit) {
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
             text = "Tìm kiếm gần đây",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = AuthColors.Primary
+            fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(12.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            RecentSearchTag("Kinh điển")
-            RecentSearchTag("Giải thưởng")
-            RecentSearchTag("Tiểu thuyết")
+            RecentSearchTag("Kinh điển", onClick = { onTagClick("Văn học") })
+            RecentSearchTag("Giải thưởng", onClick = { onTagClick("Best seller") })
+            RecentSearchTag("Tiểu thuyết", onClick = { onTagClick("Tiểu thuyết") })
         }
     }
 }
 
 @Composable
-fun RecentSearchTag(text: String) {
+fun RecentSearchTag(text: String, onClick: () -> Unit) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodySmall.copy(
             textDecoration = TextDecoration.Underline
         ),
-        color = AuthColors.Hint,
-        modifier = Modifier.clickable { /* TODO */ }
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.clickable { onClick() }
     )
 }
