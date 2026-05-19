@@ -11,6 +11,8 @@ data class Book(
     val synopsis: String = "",
     val imageUrl: String? = null,
     val ownerId: String = "",
+    val shopName: String = "Cửa hàng sách", // Tên shop bán quyển này
+    val shopAvatarUrl: String? = null,       // Ảnh đại diện shop
     val category: String = "Khác",
     val stock: Int = 0
 )

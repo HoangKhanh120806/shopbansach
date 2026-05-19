@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,10 +63,9 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding()), // Chỉ padding dưới cho BottomBar
+                    .padding(bottom = padding.calculateBottomPadding()), 
                 contentPadding = PaddingValues(top = padding.calculateTopPadding())
             ) {
-                // Giảm top padding từ 32dp xuống 16dp để cân đối hơn
                 item { HomeHeader(navController, uiState.currentUser) }
                 item { StorySlideSection(uiState.featuredBooks, navController) }
                 item { NewArrivalsHeader() }
@@ -83,14 +83,14 @@ fun HomeHeader(navController: NavController, currentUser: User?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 20.dp), // Tối ưu khoảng cách
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
             Text(
                 text = "Cozy Reads",
-                style = MaterialTheme.typography.headlineMedium.copy( // Đổi từ Large xuống Medium để đỡ thô
+                style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = FontFamily.Serif,
                     letterSpacing = (-0.5).sp
@@ -177,7 +177,7 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
 fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
     Column(
         modifier = Modifier
-            .width(140.dp) // Nhỏ gọn hơn một chút
+            .width(140.dp)
             .clickable { onClick() }
     ) {
         Box(
@@ -198,6 +198,20 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
+        
+        // Hiển thị tên Shop ngay dưới ảnh
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Storefront, null, tint = Color.Gray, modifier = Modifier.size(12.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = book.shopName,
+                fontSize = 11.sp,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
         Text(
             text = book.title,
             fontWeight = FontWeight.Bold,
@@ -249,13 +263,23 @@ fun NewArrivalItem(book: Book, navController: NavController) {
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = book.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                
+                // Hiển thị tên Shop ở danh sách dọc
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = book.shopName, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                }
+                
                 Text(text = book.author, fontSize = 12.sp, color = Color.Gray)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(text = CurrencyUtils.formatPrice(book.price), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(12.dp))
                     Text(text = " ${book.rating}", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            Text(text = CurrencyUtils.formatPrice(book.price), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
         }
     }
 }

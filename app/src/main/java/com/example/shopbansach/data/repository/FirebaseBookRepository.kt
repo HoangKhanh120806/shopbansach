@@ -1,6 +1,7 @@
 package com.example.shopbansach.data.repository
 
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
@@ -132,13 +133,19 @@ class FirebaseBookRepository {
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
+            
+            // Lấy thông tin shop của người dùng hiện tại để lưu kèm vào sách
+            val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
+            val currentUser = userSnapshot.toObject(User::class.java)
+            val shopName = currentUser?.shopName ?: currentUser?.name ?: "Cửa hàng sách"
+            val shopAvatar = currentUser?.shopAvatarUrl ?: currentUser?.avatarUrl
+
             val docRef = booksCollection.document(book.id)
             val existingDoc = docRef.get().await()
 
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
-                val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
-                val role = currentUserDoc.getString("role")
+                val role = userSnapshot.getString("role")
                 
                 if (ownerId != currentUserId && role != "ADMIN") {
                     throw Exception("Bạn không có quyền chỉnh sửa sách này")
@@ -153,12 +160,21 @@ class FirebaseBookRepository {
                     "synopsis" to book.synopsis,
                     "imageUrl" to book.imageUrl,
                     "category" to book.category,
-                    "stock" to book.stock
+                    "stock" to book.stock,
+                    "shopName" to shopName,
+                    "shopAvatarUrl" to shopAvatar
                 ).filter { it.value != null }
                 
                 docRef.update(updates).await()
             } else {
-                docRef.set(book).await()
+                // Gán thông tin shop vào book object trước khi lưu mới
+                val bookWithShopInfo = book.copy(
+                    ownerId = currentUserId,
+                    shopName = shopName,
+                    shopAvatarUrl = shopAvatar,
+                    titleLowercase = book.title.lowercase(Locale.ROOT)
+                )
+                docRef.set(bookWithShopInfo).await()
             }
             Result.success(Unit)
         } catch (e: Exception) {

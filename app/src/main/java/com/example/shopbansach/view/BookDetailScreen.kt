@@ -60,7 +60,6 @@ fun BookDetailScreen(
         viewModel.getBookDetail(bookId)
     }
 
-    // Xử lý thông báo khi thêm vào giỏ hàng thành công
     LaunchedEffect(cartUiState.actionState) {
         if (cartUiState.actionState is CartActionState.Success) {
             Toast.makeText(context, "Đã thêm vào giỏ hàng!", Toast.LENGTH_SHORT).show()
@@ -164,7 +163,8 @@ fun BookDetailScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        SellerInfoSection(uiState.seller) {
+                        // Hiển thị thông tin Shop nổi bật
+                        SellerInfoSection(uiState.seller, book) {
                             if (uiState.seller != null) {
                                 navController.navigate(Screen.SellerShop.createRoute(uiState.seller!!.id))
                             }
@@ -414,18 +414,58 @@ fun StatItem(label: String, value: String, icon: androidx.compose.ui.graphics.ve
 }
 
 @Composable
-fun SellerInfoSection(seller: User?, onVisitShop: () -> Unit) {
-    CustomCard(modifier = Modifier.fillMaxWidth().clickable { onVisitShop() }) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
-                AsyncImage(model = seller?.shopAvatarUrl, contentDescription = null, contentScale = ContentScale.Crop)
+fun SellerInfoSection(seller: User?, book: Book, onVisitShop: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onVisitShop() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                AsyncImage(
+                    model = seller?.shopAvatarUrl ?: book.shopAvatarUrl ?: "https://via.placeholder.com/150",
+                    contentDescription = "Shop Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(seller?.shopName ?: "Chủ shop", fontWeight = FontWeight.Bold)
-                Text("Người bán tin cậy", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = seller?.shopName ?: book.shopName,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Người bán uy tín", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
             }
-            Text("Xem Shop", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Button(
+                onClick = onVisitShop,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text("Xem Shop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -153,7 +154,6 @@ fun OrderItemCard(order: Order) {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 
-            // Hiển thị sản phẩm đầu tiên và text "và x sản phẩm khác"
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val firstItem = order.items.firstOrNull()
                 if (firstItem != null) {
@@ -174,6 +174,14 @@ fun OrderItemCard(order: Order) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        
+                        // Hiển thị tên shop của sản phẩm trong lịch sử
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(firstItem.shopName, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                        }
+
                         if (order.items.size > 1) {
                             Text(
                                 text = "và ${order.items.size - 1} sản phẩm khác",

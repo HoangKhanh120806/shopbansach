@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Museum
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -266,7 +267,7 @@ fun CategoryCard(
                     fontWeight = FontWeight.Bold,
                     lineHeight = 20.sp
                 ),
-                color = Color(0xFF2D2D2D) // Dark text for light backgrounds
+                color = Color(0xFF2D2D2D) 
             )
             Text(
                 text = subtitle,
@@ -326,9 +327,22 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                
+                // Hiển thị tên Shop trong kết quả tìm kiếm
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = book.shopName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
                 Text(
                     text = book.author,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(

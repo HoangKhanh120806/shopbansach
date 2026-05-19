@@ -24,6 +24,7 @@ class AuthRepository {
                 id = userId,
                 name = name,
                 email = email,
+                shopName = name, // Mặc định tên shop là tên người dùng khi mới đăng ký
                 memberSince = "2024",
                 role = UserRole.USER
             )
@@ -103,9 +104,23 @@ class AuthRepository {
     
     suspend fun updateShopName(userId: String, shopName: String): Result<Unit> {
         return try {
-            firestore.collection("users").document(userId)
-                .update("shopName", shopName)
+            val batch = firestore.batch()
+            
+            // 1. Cập nhật profile user
+            val userRef = firestore.collection("users").document(userId)
+            batch.update(userRef, "shopName", shopName)
+            
+            // 2. Cập nhật tên Shop trên tất cả sách của User này
+            val booksSnapshot = firestore.collection("books")
+                .whereEqualTo("ownerId", userId)
+                .get()
                 .await()
+            
+            for (doc in booksSnapshot.documents) {
+                batch.update(doc.reference, "shopName", shopName)
+            }
+            
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -114,9 +129,23 @@ class AuthRepository {
 
     suspend fun updateShopAvatarUrl(userId: String, shopAvatarUrl: String): Result<Unit> {
         return try {
-            firestore.collection("users").document(userId)
-                .update("shopAvatarUrl", shopAvatarUrl)
+            val batch = firestore.batch()
+            
+            // 1. Cập nhật profile user
+            val userRef = firestore.collection("users").document(userId)
+            batch.update(userRef, "shopAvatarUrl", shopAvatarUrl)
+            
+            // 2. Cập nhật ảnh Shop trên tất cả sách của User này
+            val booksSnapshot = firestore.collection("books")
+                .whereEqualTo("ownerId", userId)
+                .get()
                 .await()
+            
+            for (doc in booksSnapshot.documents) {
+                batch.update(doc.reference, "shopAvatarUrl", shopAvatarUrl)
+            }
+            
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -169,7 +198,6 @@ class AuthRepository {
             val user = auth.currentUser ?: throw Exception("Chưa đăng nhập")
             val userId = user.uid
             
-            // Dọn dẹp data trước khi xóa auth
             cleanUpUserData(userId)
 
             user.delete().await()
@@ -182,18 +210,15 @@ class AuthRepository {
     private suspend fun cleanUpUserData(userId: String) {
         val batch = firestore.batch()
 
-        // 1. Xóa sách
         val booksSnapshot = firestore.collection("books").whereEqualTo("ownerId", userId).get().await()
         for (doc in booksSnapshot.documents) batch.delete(doc.reference)
 
-        // 2. Xóa địa chỉ & giỏ hàng
         val addressesSnapshot = firestore.collection("users").document(userId).collection("addresses").get().await()
         for (doc in addressesSnapshot.documents) batch.delete(doc.reference)
 
         val cartSnapshot = firestore.collection("users").document(userId).collection("cart").get().await()
         for (doc in cartSnapshot.documents) batch.delete(doc.reference)
 
-        // 3. Xóa document user
         batch.delete(firestore.collection("users").document(userId))
 
         batch.commit().await()
@@ -207,7 +232,7 @@ class AuthRepository {
     suspend fun updateUserRole(userId: String, newRole: UserRole): Result<Unit> {
         return try {
             firestore.collection("users").document(userId)
-                .update("role", newRole.name) // Sử dụng .name để Firestore lưu dạng String chuẩn
+                .update("role", newRole.name)
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -217,7 +242,6 @@ class AuthRepository {
 
     suspend fun deleteUserByAdmin(userId: String): Result<Unit> {
         return try {
-            // Admin chỉ xóa được data trên Firestore (không xóa được tài khoản Auth của người khác từ client SDK)
             cleanUpUserData(userId)
             Result.success(Unit)
         } catch (e: Exception) {

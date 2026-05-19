@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ShoppingCartCheckout
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,7 +64,6 @@ fun CheckoutScreen(
     var city by remember { mutableStateOf("") }
     var selectedPayment by remember { mutableStateOf("cod") }
 
-    // Xử lý lỗi và Reset trạng thái
     LaunchedEffect(cartUiState.errorMessage) {
         cartUiState.errorMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
@@ -71,7 +71,6 @@ fun CheckoutScreen(
         }
     }
 
-    // Load dữ liệu ban đầu
     LaunchedEffect(Unit) {
         addressViewModel.loadAddresses()
         if (buyNowBookId != null) {
@@ -81,7 +80,6 @@ fun CheckoutScreen(
         }
     }
 
-    // Tự động điền địa chỉ mặc định khi danh sách tải xong
     LaunchedEffect(addressUiState.addresses) {
         val defaultAddress = addressUiState.addresses.find { it.isDefault } 
             ?: addressUiState.addresses.firstOrNull()
@@ -94,7 +92,6 @@ fun CheckoutScreen(
         }
     }
 
-    // Xác định danh sách sản phẩm thanh toán
     val checkoutItems = remember(buyNowBookId, bookUiState.book, cartUiState.cartItems) {
         if (buyNowBookId != null && bookUiState.book != null) {
             listOf(
@@ -106,6 +103,7 @@ fun CheckoutScreen(
                     quantity = buyNowQuantity,
                     author = bookUiState.book!!.author,
                     ownerId = bookUiState.book!!.ownerId,
+                    shopName = bookUiState.book!!.shopName,
                     isSelected = true
                 )
             )
@@ -265,7 +263,15 @@ fun OrderItemRow(item: CartItem) {
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(item.title, maxLines = 1, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text("Số lượng: ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
+            
+            // Hiển thị tên Shop tại trang thanh toán
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(item.shopName, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+            }
+            
+            Text("Số lượng: ${item.quantity}", fontSize = 11.sp, color = Color.Gray)
         }
         Text(CurrencyUtils.formatPrice(item.price * item.quantity), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     }

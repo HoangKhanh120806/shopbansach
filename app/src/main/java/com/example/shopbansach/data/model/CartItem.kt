@@ -31,11 +31,15 @@ data class CartItem(
     @set:PropertyName("ownerId")
     var ownerId: String = "",
     
+    @get:PropertyName("shopName")
+    @set:PropertyName("shopName")
+    var shopName: String = "Cửa hàng sách",
+
     @get:PropertyName("isSelected")
     @set:PropertyName("isSelected")
     var isSelected: Boolean = false,
 
     @get:PropertyName("stock")
     @set:PropertyName("stock")
-    var stock: Int = 0 // Thêm trường stock để kiểm tra nhanh trong giỏ hàng
+    var stock: Int = 0
 )
