@@ -216,7 +216,7 @@ fun EditProfileScreen(navController: NavController) {
 
                                 // 1. Nếu có chọn ảnh mới, upload lên Cloudinary trước
                                 selectedImageUri?.let { uri ->
-                                    val uploadResult = cloudinaryRepository.uploadImage(uri)
+                                    val uploadResult = cloudinaryRepository.uploadAvatar(uri)
                                     if (uploadResult.isSuccess) {
                                         finalAvatarUrl = uploadResult.getOrNull()
                                     } else {

@@ -60,7 +60,7 @@ class BookViewModel(
                 var finalImageUrl = existingImageUrl
 
                 if (imageUri != null) {
-                    val uploadResult = cloudinaryRepository.uploadImage(imageUri)
+                    val uploadResult = cloudinaryRepository.uploadBookCover(imageUri)
                     if (uploadResult.isSuccess) {
                         finalImageUrl = uploadResult.getOrNull()
                     } else {

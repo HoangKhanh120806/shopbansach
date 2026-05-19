@@ -66,24 +66,15 @@ class MyShopViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // 1. Lấy danh sách sách của tôi trước
                 val myBooks = bookRepository.getBooksByOwner(userId)
                 val myBookIds = myBooks.map { it.id }.toSet()
-                Log.d("MyShopVM", "Found ${myBooks.size} books owned by $userId")
 
-                // 2. Thu thập đơn hàng từ nhiều nguồn để tránh lỗi quyền truy cập/Index
                 val allPossibleOrders = mutableListOf<Order>()
-                
-                // Nguồn A: Đơn hàng chứa sellerId của mình (Cấu trúc mới)
                 try {
                     val ordersBySeller = orderRepository.getOrdersBySeller(userId)
                     allPossibleOrders.addAll(ordersBySeller)
-                    Log.d("MyShopVM", "Source A (SellerIds): Found ${ordersBySeller.size} orders")
-                } catch (e: Exception) {
-                    Log.e("MyShopVM", "Source A failed: ${e.message}")
-                }
+                } catch (e: Exception) { }
 
-                // Nguồn B: Đơn hàng do chính mình đặt (Nếu mình tự mua hàng của mình để test)
                 try {
                     val userOrders = orderRepository.getOrdersByUser(userId)
                     allPossibleOrders.addAll(userOrders)
@@ -120,18 +111,18 @@ class MyShopViewModel(
                     val status = order.status.trim().lowercase()
                     if (status != "đã hủy") {
                         var orderContribution = 0L
-                        
+
                         order.items.forEach { item ->
                             // KIỂM TRA: Nếu ownerId khớp HOẶC bookId nằm trong danh sách sách của mình
                             val isMyItem = item.ownerId == userId || myBookIds.contains(item.bookId)
-                            
+
                             if (isMyItem) {
                                 val itemTotal = item.price * item.quantity
                                 orderContribution += itemTotal
                                 totalSoldCount += item.quantity
-                                
+
                                 bookSoldMap[item.bookId] = (bookSoldMap[item.bookId] ?: 0) + item.quantity
-                                
+
                                 if (order.createdAt >= startOfToday) {
                                     soldTodayCount += item.quantity
                                 }
@@ -151,7 +142,7 @@ class MyShopViewModel(
                         }
                     }
                 }
-                
+
                 Log.d("MyShopVM", "Calculation Result: TotalRev=$totalRev, Sold=$totalSoldCount")
 
                 _uiState.update { it.copy(
@@ -175,9 +166,12 @@ class MyShopViewModel(
     fun updateShopName(newName: String) {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isUpdating = true) }
-            if (authRepository.updateShopName(userId, newName).isSuccess) {
+            _uiState.update { it.copy(isUpdating = true, errorMessage = null) }
+            val result = authRepository.updateShopName(userId, newName)
+            if (result.isSuccess) {
                 loadUserData()
+            } else {
+                _uiState.update { it.copy(errorMessage = "Lỗi: ${result.exceptionOrNull()?.message}") }
             }
             _uiState.update { it.copy(isUpdating = false) }
         }
@@ -186,13 +180,17 @@ class MyShopViewModel(
     fun updateShopAvatar(imageUri: Uri) {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isUpdating = true) }
-            val uploadResult = cloudinaryRepository.uploadImage(imageUri, "accound")
+            _uiState.update { it.copy(isUpdating = true, errorMessage = null) }
+            val uploadResult = cloudinaryRepository.uploadShopAvatar(imageUri)
             if (uploadResult.isSuccess) {
                 val avatarUrl = uploadResult.getOrNull()
                 if (avatarUrl != null && authRepository.updateShopAvatarUrl(userId, avatarUrl).isSuccess) {
                     loadUserData()
+                } else {
+                    _uiState.update { it.copy(errorMessage = "Cập nhật ảnh vào database thất bại") }
                 }
+            } else {
+                _uiState.update { it.copy(errorMessage = uploadResult.exceptionOrNull()?.message ?: "Tải ảnh thất bại") }
             }
             _uiState.update { it.copy(isUpdating = false) }
         }
@@ -204,5 +202,9 @@ class MyShopViewModel(
                 loadMyShopData()
             }
         }
+    }
+
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }
