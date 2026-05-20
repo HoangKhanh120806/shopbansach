@@ -33,7 +33,7 @@ data class CartItem(
     
     @get:PropertyName("shopName")
     @set:PropertyName("shopName")
-    var shopName: String = "Cửa hàng sách",
+    var shopName: String = "", // Loại bỏ giá trị mặc định "Cửa hàng sách"
 
     @get:PropertyName("isSelected")
     @set:PropertyName("isSelected")

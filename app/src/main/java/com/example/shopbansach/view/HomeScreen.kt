@@ -199,12 +199,19 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
         }
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Hiển thị tên Shop ngay dưới ảnh
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = book.title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
             Icon(Icons.Default.Storefront, null, tint = Color.Gray, modifier = Modifier.size(12.dp))
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = book.shopName,
+                text = book.shopName.ifEmpty { "Người bán" },
                 fontSize = 11.sp,
                 color = Color.Gray,
                 maxLines = 1,
@@ -213,17 +220,11 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
         }
 
         Text(
-            text = book.title,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
             text = CurrencyUtils.formatPrice(book.price),
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 2.dp)
         )
     }
 }
@@ -248,36 +249,72 @@ fun NewArrivalItem(book: Book, navController: NavController) {
             .clickable { navController.navigate(Screen.BookDetail.createRoute(book.id)) },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(10.dp).fillMaxWidth(),
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = book.imageUrl,
                 contentDescription = null,
-                modifier = Modifier.size(50.dp, 75.dp).clip(RoundedCornerShape(8.dp)),
+                modifier = Modifier.size(60.dp, 90.dp).clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = book.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = book.title, 
+                    fontWeight = FontWeight.Bold, 
+                    fontSize = 16.sp, 
+                    maxLines = 1, 
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 
-                // Hiển thị tên Shop ở danh sách dọc
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = book.shopName, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                // Hiển thị tên Shop thực tế với icon như trong ảnh mẫu bạn gửi
+                Row(
+                    verticalAlignment = Alignment.CenterVertically, 
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Storefront, 
+                        null, 
+                        tint = Color.Black.copy(alpha = 0.7f), 
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = book.shopName.ifEmpty { "Người bán" }, 
+                        fontSize = 14.sp, 
+                        color = Color.Black.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Medium
+                    )
                 }
                 
-                Text(text = book.author, fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    text = book.author, 
+                    fontSize = 13.sp, 
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = CurrencyUtils.formatPrice(book.price), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(12.dp))
-                    Text(text = " ${book.rating}", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = CurrencyUtils.formatPrice(book.price), 
+                    fontWeight = FontWeight.ExtraBold, 
+                    color = Color.Black, 
+                    fontSize = 16.sp
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
+                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(14.dp))
+                    Text(
+                        text = " ${book.rating}", 
+                        fontSize = 12.sp, 
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
                 }
             }
         }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.RemoveShoppingCart
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,7 +41,6 @@ fun CartScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
-    // Sử dụng remember với key là uiState.cartItems để đảm bảo tính toán lại khi dữ liệu thay đổi
     val selectedItems = remember(uiState.cartItems) { 
         uiState.cartItems.filter { it.isSelected && it.stock > 0 } 
     }
@@ -51,7 +51,6 @@ fun CartScreen(
     
     val shipping = if (subtotal > 0) 30000L else 0L
     
-    // Trạng thái "Chọn tất cả" dựa trên những sản phẩm CÒN HÀNG
     val isAllSelected = remember(uiState.cartItems) {
         val available = uiState.cartItems.filter { it.stock > 0 }
         available.isNotEmpty() && available.all { it.isSelected }
@@ -253,10 +252,32 @@ fun CartItemCard(
                     overflow = TextOverflow.Ellipsis,
                     color = if (isOutOfStock) Color.Gray else Color.Unspecified
                 )
+                
+                // Hiển thị tên Cửa hàng (Shop Name) giống mẫu
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Storefront, 
+                        null, 
+                        tint = Color.Black.copy(alpha = 0.6f), 
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = item.shopName.ifEmpty { "Cửa hàng sách" }, 
+                        fontSize = 13.sp, 
+                        color = Color.Black.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
                 Text(
                     text = item.author, 
                     fontSize = 12.sp, 
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
                 
                 if (isInsufficient) {

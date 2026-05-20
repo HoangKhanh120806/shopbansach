@@ -93,7 +93,6 @@ class FirebaseBookRepository {
         }
     }
     
-    // Tìm kiếm chính xác theo thể loại
     suspend fun getBooksByCategory(category: String): List<Book> {
         return try {
             val snapshot = booksCollection
@@ -102,7 +101,6 @@ class FirebaseBookRepository {
                 .get().await()
             snapshot.toObjects(Book::class.java)
         } catch (e: Exception) {
-            // Fallback: Tìm kiếm tương đối nếu không khớp hoàn toàn
             manualSearchFallback(category)
         }
     }
@@ -134,10 +132,11 @@ class FirebaseBookRepository {
         return try {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
             
-            // Lấy thông tin shop của người dùng hiện tại để lưu kèm vào sách
             val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
             val currentUser = userSnapshot.toObject(User::class.java)
-            val shopName = currentUser?.shopName ?: currentUser?.name ?: "Cửa hàng sách"
+            
+            // Lấy tên shop thực tế hoặc tên người dùng, tuyệt đối không dùng chữ "Cửa hàng sách" cứng
+            val shopName = if (!currentUser?.shopName.isNullOrEmpty()) currentUser?.shopName!! else (currentUser?.name ?: "Người bán")
             val shopAvatar = currentUser?.shopAvatarUrl ?: currentUser?.avatarUrl
 
             val docRef = booksCollection.document(book.id)
@@ -167,7 +166,6 @@ class FirebaseBookRepository {
                 
                 docRef.update(updates).await()
             } else {
-                // Gán thông tin shop vào book object trước khi lưu mới
                 val bookWithShopInfo = book.copy(
                     ownerId = currentUserId,
                     shopName = shopName,

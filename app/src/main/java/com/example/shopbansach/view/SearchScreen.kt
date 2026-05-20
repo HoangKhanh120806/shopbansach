@@ -10,12 +10,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Brush
-import androidx.compose.material.icons.filled.Museum
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -125,7 +120,7 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (uiState.searchQuery.isEmpty()) {
-                        // Trạng thái chưa tìm kiếm: Gợi ý và Thể loại
+                        // Trạng thái chưa tìm kiếm
                         item {
                             Text(
                                 text = "Gợi ý cho bạn",
@@ -161,7 +156,7 @@ fun SearchScreen(
                             })
                         }
                     } else {
-                        // Trạng thái đang tìm kiếm: Kết quả tìm kiếm
+                        // Trạng thái đang tìm kiếm
                         if (uiState.searchResults.isEmpty()) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
@@ -295,12 +290,13 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Row(
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Ảnh sách
             Box(
                 modifier = Modifier
-                    .size(60.dp, 85.dp)
+                    .size(65.dp, 95.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .shadow(1.dp, RoundedCornerShape(8.dp))
@@ -318,47 +314,69 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             
             Column(modifier = Modifier.weight(1f)) {
+                // Tên sách in đậm
                 Text(
                     text = book.title,
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 
-                // Hiển thị tên Shop trong kết quả tìm kiếm
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                // Tên Shop với icon Storefront (Khớp với ảnh mẫu)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Storefront, 
+                        null, 
+                        tint = Color.Black.copy(alpha = 0.7f), 
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = book.shopName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        text = if (book.shopName.isNotEmpty()) book.shopName else "Cửa hàng sách",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black.copy(alpha = 0.9f),
                         fontWeight = FontWeight.Medium
                     )
                 }
 
+                // Tên tác giả màu xám
                 Text(
                     text = book.author,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = CurrencyUtils.formatPrice(book.price),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
             
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                modifier = Modifier.size(20.dp)
-            )
+            // Cột bên phải: Giá và Đánh giá
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = CurrencyUtils.formatPrice(book.price),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Star, 
+                        null, 
+                        tint = Color(0xFFFFB300), 
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = " ${book.rating}", 
+                        fontSize = 12.sp, 
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                }
+            }
         }
     }
 }
