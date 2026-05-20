@@ -29,21 +29,22 @@ class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    init {
-        loadData()
-        
-        // Cập nhật: Lắng nghe trạng thái Auth và lấy dữ liệu User mới nhất từ Firestore
-        // Việc này giúp UI thay đổi ngay khi Admin vừa duyệt quyền người bán
-        auth.addAuthStateListener { firebaseAuth ->
-            viewModelScope.launch {
-                if (firebaseAuth.currentUser != null) {
-                    val user = authRepository.getCurrentUserData()
-                    _uiState.update { it.copy(currentUser = user) }
-                } else {
-                    _uiState.update { it.copy(currentUser = null) }
-                }
+    // Khai báo listener để có thể gỡ bỏ sau này
+    private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        viewModelScope.launch {
+            if (firebaseAuth.currentUser != null) {
+                val user = authRepository.getCurrentUserData()
+                _uiState.update { it.copy(currentUser = user) }
+            } else {
+                _uiState.update { it.copy(currentUser = null) }
             }
         }
+    }
+
+    init {
+        loadData()
+        // Đăng ký listener
+        auth.addAuthStateListener(authStateListener)
     }
 
     fun loadData() {
@@ -67,5 +68,11 @@ class HomeViewModel : ViewModel() {
                 ) }
             }
         }
+    }
+
+    // Gỡ bỏ listener khi ViewModel không còn dùng nữa để tránh rò rỉ bộ nhớ
+    override fun onCleared() {
+        super.onCleared()
+        auth.removeAuthStateListener(authStateListener)
     }
 }

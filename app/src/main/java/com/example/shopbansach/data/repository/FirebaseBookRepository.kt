@@ -135,7 +135,6 @@ class FirebaseBookRepository {
             val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
             val currentUser = userSnapshot.toObject(User::class.java)
             
-            // Lấy tên shop thực tế hoặc tên người dùng, tuyệt đối không dùng chữ "Cửa hàng sách" cứng
             val shopName = if (!currentUser?.shopName.isNullOrEmpty()) currentUser?.shopName!! else (currentUser?.name ?: "Người bán")
             val shopAvatar = currentUser?.shopAvatarUrl ?: currentUser?.avatarUrl
 
@@ -162,7 +161,7 @@ class FirebaseBookRepository {
                     "stock" to book.stock,
                     "shopName" to shopName,
                     "shopAvatarUrl" to shopAvatar
-                ).filter { it.value != null }
+                ).filterValues { it != null }
                 
                 docRef.update(updates).await()
             } else {

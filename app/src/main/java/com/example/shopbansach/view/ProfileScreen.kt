@@ -10,7 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.AddBusiness
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
@@ -104,7 +103,7 @@ fun ProfileScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
@@ -168,7 +167,6 @@ fun ProfileScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column {
-                            // Logic phân quyền hiển thị
                             when (user?.role) {
                                 UserRole.SELLER, UserRole.ADMIN -> {
                                     ProfileMenuItem(
@@ -244,7 +242,6 @@ fun ProfileScreen(
                         }
                     }
                 } else {
-                    // UI KHI CHƯA ĐĂNG NHẬP
                     Text(
                         text = "Chào mừng bạn",
                         style = MaterialTheme.typography.displaySmall.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold),
