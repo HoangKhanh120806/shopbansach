@@ -8,7 +8,6 @@ import com.example.shopbansach.data.model.CartItem
 import com.example.shopbansach.data.model.Order
 import com.example.shopbansach.data.repository.CartRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
-import com.example.shopbansach.data.repository.OrderRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,9 +18,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 sealed class CartActionState {
-    data object Idle : CartActionState()
-    data object Loading : CartActionState()
-    data object Success : CartActionState()
+    object Idle : CartActionState()
+    object Loading : CartActionState()
+    object Success : CartActionState()
     data class Error(val message: String) : CartActionState()
 }
 
@@ -34,8 +33,7 @@ data class CartUiState(
 
 class CartViewModel(
     private val repository: CartRepository = CartRepository(),
-    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository(),
-    private val orderRepository: OrderRepository = OrderRepository()
+    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CartUiState())
@@ -104,7 +102,7 @@ class CartViewModel(
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
             } else {
-                _uiState.update { it.copy(actionState = CartActionState.Error(result.exceptionOrNull()?.message ?: "Lỗi giỏ hàng")) }
+                _uiState.update { it.copy(actionState = CartActionState.Error("Lỗi thêm vào giỏ")) }
             }
         }
     }
@@ -155,8 +153,7 @@ class CartViewModel(
 
                 val orderId = firestore.runTransaction { transaction ->
                     val snapshots = checkoutItems.associateWith { item ->
-                        val bookRef = firestore.collection("books").document(item.bookId)
-                        transaction.get(bookRef)
+                        transaction.get(firestore.collection("books").document(item.bookId))
                     }
 
                     val finalItems = mutableListOf<CartItem>()
@@ -164,9 +161,11 @@ class CartViewModel(
 
                     checkoutItems.forEach { item ->
                         val snapshot = snapshots[item] ?: throw Exception("Lỗi sản phẩm")
-                        if (!snapshot.exists()) throw Exception("Sản phẩm đã bị xóa")
+                        if (!snapshot.exists()) throw Exception("Sản phẩm không tồn tại")
+
                         val stock = snapshot.getLong("stock") ?: 0L
-                        if (stock < item.quantity.toLong()) throw Exception("Sản phẩm '${item.title}' hết hàng")
+                        if (stock < item.quantity.toLong()) throw Exception("Hết hàng")
+
                         val ownerId = snapshot.getString("ownerId") ?: ""
                         finalItems.add(item.copy(ownerId = ownerId, stock = stock.toInt()))
                         if (ownerId.isNotEmpty()) sellerIds.add(ownerId)

@@ -135,8 +135,7 @@ class FirebaseBookRepository {
             val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
             val currentUser = userSnapshot.toObject(User::class.java)
             
-            val name = currentUser?.name ?: "Người bán"
-            val shopName = currentUser?.shopName?.ifEmpty { name } ?: name
+            val shopName = currentUser?.shopName?.ifEmpty { currentUser.name } ?: (currentUser?.name ?: "Người bán")
             val shopAvatar = currentUser?.shopAvatarUrl ?: currentUser?.avatarUrl
 
             val docRef = booksCollection.document(book.id)
@@ -147,7 +146,7 @@ class FirebaseBookRepository {
                 val role = userSnapshot.getString("role")
                 
                 if (ownerId != currentUserId && role != "ADMIN") {
-                    throw Exception("Không có quyền")
+                    throw Exception("Bạn không có quyền")
                 }
                 
                 val updates = mapOf(
