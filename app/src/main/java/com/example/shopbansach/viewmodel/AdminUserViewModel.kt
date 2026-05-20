@@ -17,7 +17,7 @@ data class AdminUserUiState(
     val isLoading: Boolean = false,
     val searchQuery: String = "",
     val errorMessage: String? = null,
-    val actionSuccessMessage: String? = null // Thêm thông báo thành công
+    val actionSuccessMessage: String? = null
 )
 
 class AdminUserViewModel(private val repository: AuthRepository = AuthRepository()) : ViewModel() {
@@ -58,7 +58,8 @@ class AdminUserViewModel(private val repository: AuthRepository = AuthRepository
         if (query.isEmpty()) return users
         return users.filter { 
             it.name.contains(query, ignoreCase = true) || 
-            it.email.contains(query, ignoreCase = true) 
+            it.email.contains(query, ignoreCase = true) ||
+            (it.shopName?.contains(query, ignoreCase = true) ?: false)
         }
     }
 
@@ -71,6 +72,27 @@ class AdminUserViewModel(private val repository: AuthRepository = AuthRepository
                 loadUsers() 
             } else {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Lỗi đổi quyền: ${result.exceptionOrNull()?.message}") }
+            }
+        }
+    }
+
+    // Hàm Admin sửa thông tin người dùng/người bán
+    fun updateUserInfo(userId: String, newName: String, newShopName: String?) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                // Cập nhật tên cơ bản
+                repository.updateUserProfile(userId, newName)
+                
+                // Nếu là người bán, cập nhật thêm tên Shop (đồng bộ lên cả sách)
+                if (newShopName != null) {
+                    repository.updateShopName(userId, newShopName)
+                }
+                
+                _uiState.update { it.copy(actionSuccessMessage = "Đã cập nhật thông tin thành công") }
+                loadUsers()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Lỗi cập nhật: ${e.message}") }
             }
         }
     }

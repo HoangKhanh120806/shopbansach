@@ -30,10 +30,10 @@ class HomeViewModel : ViewModel() {
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        // Tải dữ liệu ban đầu
         loadData()
         
-        // Tối ưu: Lắng nghe trạng thái Auth để cập nhật UI ngay lập tức khi đăng nhập/đăng xuất
+        // Cập nhật: Lắng nghe trạng thái Auth và lấy dữ liệu User mới nhất từ Firestore
+        // Việc này giúp UI thay đổi ngay khi Admin vừa duyệt quyền người bán
         auth.addAuthStateListener { firebaseAuth ->
             viewModelScope.launch {
                 if (firebaseAuth.currentUser != null) {
@@ -50,7 +50,6 @@ class HomeViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Tải song song (nếu cần) nhưng ở đây tuần tự cho an toàn
                 val featured = bookRepository.getFeaturedBooks()
                 val arrivals = bookRepository.getNewArrivals()
                 val user = authRepository.getCurrentUserData()

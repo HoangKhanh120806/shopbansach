@@ -9,7 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
@@ -42,7 +44,6 @@ fun AdminUserManageScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Hiển thị Toast khi có thông báo từ ViewModel
     LaunchedEffect(uiState.errorMessage, uiState.actionSuccessMessage) {
         uiState.errorMessage?.let {
             Toast.makeText(context, "Lỗi: $it", Toast.LENGTH_LONG).show()
@@ -67,14 +68,13 @@ fun AdminUserManageScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Thanh tìm kiếm
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChange(it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Tìm theo tên hoặc email...") },
+                placeholder = { Text("Tìm theo tên, email hoặc tên shop...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -95,11 +95,14 @@ fun AdminUserManageScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.filteredUsers) { user ->
+                        val sortedUsers = uiState.filteredUsers.sortedByDescending { it.role == UserRole.PENDING_SELLER }
+                        
+                        items(sortedUsers) { user ->
                             UserAdminItem(
                                 user = user,
                                 onChangeRole = { newRole -> viewModel.changeUserRole(user.id, newRole) },
-                                onDelete = { viewModel.deleteUser(user.id) }
+                                onDelete = { viewModel.deleteUser(user.id) },
+                                onUpdateInfo = { name, shopName -> viewModel.updateUserInfo(user.id, name, shopName) }
                             )
                         }
                     }
@@ -113,22 +116,28 @@ fun AdminUserManageScreen(
 fun UserAdminItem(
     user: User,
     onChangeRole: (UserRole) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onUpdateInfo: (String, String?) -> Unit
 ) {
     var showRoleDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showApproveConfirm by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (user.role == UserRole.PENDING_SELLER) 
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f) 
+                else MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -150,46 +159,127 @@ fun UserAdminItem(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // User Info
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = user.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(text = user.email, fontSize = 12.sp, color = Color.Gray)
+                if (!user.shopName.isNullOrEmpty()) {
+                    Text(text = "Shop: ${user.shopName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                }
                 
                 Surface(
                     color = when(user.role) {
                         UserRole.ADMIN -> Color(0xFF9C27B0).copy(alpha = 0.1f)
-                        UserRole.SELLER -> Color(0xFFFF9800).copy(alpha = 0.1f)
-                        UserRole.USER -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        UserRole.SELLER -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        UserRole.PENDING_SELLER -> Color(0xFFFF9800).copy(alpha = 0.1f)
+                        UserRole.USER -> Color(0xFF2196F3).copy(alpha = 0.1f)
                     },
                     shape = RoundedCornerShape(4.dp),
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        text = user.role.name,
+                        text = when(user.role) {
+                            UserRole.PENDING_SELLER -> "CHỜ DUYỆT BÁN HÀNG"
+                            else -> user.role.name
+                        },
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = when(user.role) {
                             UserRole.ADMIN -> Color(0xFF9C27B0)
-                            UserRole.SELLER -> Color(0xFFFF9800)
-                            UserRole.USER -> Color(0xFF4CAF50)
+                            UserRole.SELLER -> Color(0xFF4CAF50)
+                            UserRole.PENDING_SELLER -> Color(0xFFFF9800)
+                            UserRole.USER -> Color(0xFF2196F3)
                         }
                     )
                 }
             }
 
-            // Actions
             Row {
+                if (user.role == UserRole.PENDING_SELLER) {
+                    IconButton(
+                        onClick = { showApproveConfirm = true },
+                        modifier = Modifier.background(Color(0xFF4CAF50).copy(alpha = 0.1f), CircleShape)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = "Approve", tint = Color(0xFF4CAF50))
+                    }
+                }
+                
                 if (user.role != UserRole.ADMIN) {
+                    // Nút Sửa
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.secondary)
+                    }
+                    // Nút đổi Role
                     IconButton(onClick = { showRoleDialog = true }) {
                         Icon(Icons.Default.Shield, contentDescription = "Change Role", tint = MaterialTheme.colorScheme.primary)
                     }
+                    // Nút Xóa
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                     }
                 }
             }
         }
+    }
+
+    // Dialog Sửa thông tin
+    if (showEditDialog) {
+        var editName by remember { mutableStateOf(user.name) }
+        var editShopName by remember { mutableStateOf(user.shopName ?: "") }
+
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Sửa thông tin tài khoản") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Tên người dùng") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (user.role == UserRole.SELLER || user.role == UserRole.PENDING_SELLER) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = editShopName,
+                            onValueChange = { editShopName = it },
+                            label = { Text("Tên cửa hàng") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onUpdateInfo(editName, if (user.role == UserRole.USER) null else editShopName)
+                    showEditDialog = false
+                }) {
+                    Text("Cập nhật")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) { Text("Hủy") }
+            }
+        )
+    }
+
+    if (showApproveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showApproveConfirm = false },
+            title = { Text("Duyệt người bán") },
+            text = { Text("Bạn có đồng ý cấp quyền người bán cho ${user.name} không?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onChangeRole(UserRole.SELLER)
+                    showApproveConfirm = false
+                }) {
+                    Text("Đồng ý", color = Color(0xFF4CAF50))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showApproveConfirm = false }) { Text("Hủy") }
+            }
+        )
     }
 
     if (showRoleDialog) {
@@ -199,7 +289,7 @@ fun UserAdminItem(
             text = { Text("Chọn vai trò mới cho người dùng ${user.name}") },
             confirmButton = {
                 Column {
-                    listOf(UserRole.USER, UserRole.SELLER).forEach { role ->
+                    listOf(UserRole.USER, UserRole.SELLER, UserRole.PENDING_SELLER).forEach { role ->
                         TextButton(
                             onClick = {
                                 onChangeRole(role)
@@ -207,7 +297,11 @@ fun UserAdminItem(
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(text = if (role == UserRole.USER) "Người dùng (USER)" else "Người bán (SELLER)")
+                            Text(text = when(role) {
+                                UserRole.USER -> "Người dùng thường (USER)"
+                                UserRole.SELLER -> "Người bán (SELLER)"
+                                else -> "Chờ duyệt (PENDING_SELLER)"
+                            })
                         }
                     }
                 }
@@ -224,7 +318,7 @@ fun UserAdminItem(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Xác nhận xóa") },
-            text = { Text("Bạn có chắc chắn muốn xóa người dùng ${user.name}? Mọi dữ liệu sách và địa chỉ của họ sẽ bị xóa.") },
+            text = { Text("Bạn có chắc chắn muốn xóa người dùng ${user.name}?") },
             confirmButton = {
                 TextButton(
                     onClick = {

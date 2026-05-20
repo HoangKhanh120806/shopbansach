@@ -1,5 +1,6 @@
 package com.example.shopbansach.view
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.AddBusiness
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.NightlightRound
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,7 @@ import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
@@ -40,20 +44,50 @@ fun ProfileScreen(
     onThemeChange: (Boolean) -> Unit
 ) {
     val authRepository = remember { AuthRepository() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
-    // Trạng thái user lấy từ Firestore
     var user by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var showRegisterSellerDialog by remember { mutableStateOf(false) }
     
     val currentUser = FirebaseAuth.getInstance().currentUser
     val isLoggedIn = currentUser != null
 
-    // Lấy dữ liệu user thật từ Firestore khi màn hình được hiển thị
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
             user = authRepository.getCurrentUserData()
         }
         isLoading = false
+    }
+
+    if (showRegisterSellerDialog) {
+        AlertDialog(
+            onDismissRequest = { showRegisterSellerDialog = false },
+            title = { Text("Đăng ký bán hàng") },
+            text = { Text("Bạn có muốn gửi yêu cầu đăng ký bán hàng? Admin sẽ xem xét và duyệt yêu cầu của bạn.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            user?.let {
+                                val result = authRepository.updateUserRole(it.id, UserRole.PENDING_SELLER)
+                                if (result.isSuccess) {
+                                    Toast.makeText(context, "Yêu cầu đã được gửi! Chờ Admin duyệt.", Toast.LENGTH_SHORT).show()
+                                    user = authRepository.getCurrentUserData() 
+                                }
+                            }
+                        }
+                        showRegisterSellerDialog = false
+                    }
+                ) {
+                    Text("Gửi yêu cầu")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRegisterSellerDialog = false }) { Text("Hủy") }
+            }
+        )
     }
 
     Scaffold(
@@ -85,7 +119,6 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(60.dp))
 
                 if (isLoggedIn && user != null) {
-                    // GIAO DIỆN KHI ĐÃ ĐĂNG NHẬP
                     Text(
                         text = user?.name ?: "Người dùng",
                         style = MaterialTheme.typography.displaySmall.copy(
@@ -95,7 +128,7 @@ fun ProfileScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Cozy Reads Member Since ${user?.memberSince}",
+                        text = "Thành viên Cozy Reads từ ${user?.memberSince}",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
@@ -130,23 +163,42 @@ fun ProfileScreen(
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column {
-                            // DÒNG "BÁN SÁCH" - CHỈ HIỂN THỊ CHO NGƯỜI BÁN HOẶC ADMIN
-                            if (user?.role == UserRole.SELLER || user?.role == UserRole.ADMIN) {
-                                ProfileMenuItem(
-                                    icon = Icons.Default.AddBusiness,
-                                    title = "Bán sách",
-                                    titleColor = MaterialTheme.colorScheme.tertiary,
-                                    onClick = { navController.navigate(Screen.MyShop.route) }
-                                )
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+                            // Logic phân quyền hiển thị
+                            when (user?.role) {
+                                UserRole.SELLER, UserRole.ADMIN -> {
+                                    ProfileMenuItem(
+                                        icon = Icons.Default.AddBusiness,
+                                        title = "Quản lý Shop của tôi",
+                                        titleColor = MaterialTheme.colorScheme.tertiary,
+                                        onClick = { navController.navigate(Screen.MyShop.route) }
+                                    )
+                                }
+                                UserRole.PENDING_SELLER -> {
+                                    ProfileMenuItem(
+                                        icon = Icons.Default.HourglassEmpty,
+                                        title = "Đang chờ Admin duyệt bán hàng",
+                                        titleColor = MaterialTheme.colorScheme.secondary,
+                                        onClick = { 
+                                            Toast.makeText(context, "Yêu cầu của bạn đang được xử lý", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                                else -> {
+                                    ProfileMenuItem(
+                                        icon = Icons.Default.AddBusiness,
+                                        title = "Đăng ký bán hàng",
+                                        titleColor = MaterialTheme.colorScheme.tertiary,
+                                        onClick = { showRegisterSellerDialog = true }
+                                    )
+                                }
                             }
+                            
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
 
                             ProfileMenuItem(
                                 icon = Icons.Default.History,
@@ -162,36 +214,22 @@ fun ProfileScreen(
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
                             
-                            // Theme Switch
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    Icons.Default.NightlightRound, 
-                                    null, 
-                                    modifier = Modifier.size(28.dp), 
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
+                                Icon(Icons.Default.NightlightRound, null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Text(
-                                    "Chế độ tối", 
-                                    style = MaterialTheme.typography.bodyLarge, 
-                                    modifier = Modifier.weight(1f),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                Text("Chế độ tối", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                                 Switch(
                                     checked = isDarkTheme, 
                                     onCheckedChange = { onThemeChange(it) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = MaterialTheme.colorScheme.tertiary
-                                    )
+                                    colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.tertiary)
                                 )
                             }
                             
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
                             
-                            // Đăng xuất
                             ProfileMenuItem(
                                 icon = Icons.AutoMirrored.Filled.ExitToApp,
                                 title = "Đăng xuất",
@@ -206,73 +244,17 @@ fun ProfileScreen(
                         }
                     }
                 } else {
-                    // GIAO DIỆN KHI CHƯA ĐĂNG NHẬP
+                    // UI KHI CHƯA ĐĂNG NHẬP
                     Text(
                         text = "Chào mừng bạn",
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold
-                        ),
+                        style = MaterialTheme.typography.displaySmall.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Text(
-                        text = "Đăng nhập để xem hồ sơ và đơn hàng của bạn",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(48.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.NightlightRound, 
-                                    null, 
-                                    modifier = Modifier.size(28.dp), 
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(
-                                    "Chế độ tối", 
-                                    style = MaterialTheme.typography.bodyLarge, 
-                                    modifier = Modifier.weight(1f),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Switch(
-                                    checked = isDarkTheme, 
-                                    onCheckedChange = { onThemeChange(it) }
-                                )
-                            }
-
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                            // Nút Đăng nhập
-                            ProfileMenuItem(
-                                icon = Icons.AutoMirrored.Filled.Login,
-                                title = "Đăng nhập ngay",
-                                titleColor = MaterialTheme.colorScheme.tertiary,
-                                onClick = {
-                                    navController.navigate(Screen.Login.route)
-                                }
-                            )
-                        }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(onClick = { navController.navigate(Screen.Login.route) }) {
+                        Text("Đăng nhập ngay")
                     }
                 }
-                
-                // Thêm Spacer cuối cùng để nội dung không bị sát BottomBar
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
@@ -293,25 +275,11 @@ fun ProfileMenuItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(28.dp),
-            tint = titleColor
-        )
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = titleColor)
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = titleColor,
-            modifier = Modifier.weight(1f)
-        )
-        if (titleColor != Color.Red && titleColor != MaterialTheme.colorScheme.tertiary) {
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Text(text = title, style = MaterialTheme.typography.bodyLarge, color = titleColor, modifier = Modifier.weight(1f))
+        if (titleColor != Color.Red && icon != Icons.Default.HourglassEmpty) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.Gray)
         }
     }
 }
