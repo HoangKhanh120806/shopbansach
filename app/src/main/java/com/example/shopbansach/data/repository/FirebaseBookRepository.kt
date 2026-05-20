@@ -34,7 +34,8 @@ class FirebaseBookRepository {
 
     suspend fun getAllBooksPaged(limit: Long, lastDocument: DocumentSnapshot? = null): BookPage {
         return try {
-            var query = booksCollection.orderBy("title").limit(limit)
+            // Sử dụng FieldPath.documentId() để đảm bảo thứ tự duy nhất cho phân trang
+            var query = booksCollection.orderBy("title").orderBy(FieldPath.documentId()).limit(limit)
             if (lastDocument != null) {
                 query = query.startAfter(lastDocument)
             }
@@ -50,7 +51,7 @@ class FirebaseBookRepository {
 
     suspend fun getLastPage(limit: Long): BookPage {
         return try {
-            val query = booksCollection.orderBy("title", Query.Direction.DESCENDING).limit(limit)
+            val query = booksCollection.orderBy("title", Query.Direction.DESCENDING).orderBy(FieldPath.documentId(), Query.Direction.DESCENDING).limit(limit)
             val snapshot = query.get().await()
             val books = snapshot.toObjects(Book::class.java).reversed()
             BookPage(books, null, true)
@@ -72,6 +73,7 @@ class FirebaseBookRepository {
         return try {
             val snapshot = booksCollection
                 .orderBy("rating", Query.Direction.DESCENDING)
+                .orderBy(FieldPath.documentId())
                 .limit(10)
                 .get().await()
             snapshot.toObjects(Book::class.java)

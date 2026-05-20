@@ -8,6 +8,7 @@ import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,8 @@ class HomeViewModel : ViewModel() {
 
     private val pageHistory = mutableMapOf<Int, DocumentSnapshot?>()
     private val PAGE_SIZE = 10L
+    private var totalBooksCount: Long = 0
+    private var loadJob: Job? = null
 
     private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
         viewModelScope.launch {
@@ -59,8 +62,8 @@ class HomeViewModel : ViewModel() {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val featured = bookRepository.getFeaturedBooks()
-                val totalBooks = bookRepository.getTotalBooksCount()
-                val totalPages = ceil(totalBooks.toDouble() / PAGE_SIZE).toInt().coerceAtLeast(1)
+                totalBooksCount = bookRepository.getTotalBooksCount()
+                val totalPages = ceil(totalBooksCount.toDouble() / PAGE_SIZE).toInt().coerceAtLeast(1)
                 
                 _uiState.update { it.copy(
                     featuredBooks = featured, 
@@ -77,21 +80,47 @@ class HomeViewModel : ViewModel() {
     fun loadNewArrivals(page: Int) {
         if (page < 1 || (page > _uiState.value.totalPages && _uiState.value.totalPages > 0)) return
         
-        viewModelScope.launch {
-            _uiState.update { it.copy(isNewArrivalsLoading = true, currentPage = page) }
+        // Tránh tải lại nếu trang hiện tại đang hiển thị và không phải đang load
+        if (page == _uiState.value.currentPage && _uiState.value.newArrivals.isNotEmpty() && !_uiState.value.isNewArrivalsLoading) return
+
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            // Ngay lập tức xóa sách cũ và bật trạng thái loading
+            _uiState.update { it.copy(
+                isNewArrivalsLoading = true, 
+                currentPage = page,
+                newArrivals = emptyList() 
+            ) }
+
             try {
-                val result = if (page == _uiState.value.totalPages && page > 1) {
-                    // Logic lấy trang cuối đặc biệt
-                    bookRepository.getLastPage(PAGE_SIZE)
-                } else {
-                    val lastDoc = if (page > 1) pageHistory[page - 1] else null
-                    bookRepository.getAllBooksPaged(PAGE_SIZE, lastDoc)
+                val result = when {
+                    page == 1 -> {
+                        bookRepository.getAllBooksPaged(PAGE_SIZE, null)
+                    }
+                    pageHistory.containsKey(page - 1) -> {
+                        bookRepository.getAllBooksPaged(PAGE_SIZE, pageHistory[page - 1])
+                    }
+                    page == _uiState.value.totalPages -> {
+                        val lastPageLimit = if (totalBooksCount % PAGE_SIZE == 0L) PAGE_SIZE else totalBooksCount % PAGE_SIZE
+                        bookRepository.getLastPage(lastPageLimit)
+                    }
+                    else -> {
+                        // Nếu nhảy trang mà không có cursor, tải từ đầu
+                        bookRepository.getAllBooksPaged(PAGE_SIZE, null)
+                    }
                 }
                 
+                // Lưu cursor của trang vừa tải thành công
                 pageHistory[page] = result.lastDocument
                 
+                // Lọc bỏ sách trùng với top 5 Featured
+                val featuredIds = _uiState.value.featuredBooks.take(5).map { it.id }.toSet()
+                val filteredBooks = result.books
+                    .filter { it.id !in featuredIds }
+                    .distinctBy { it.id }
+                
                 _uiState.update { it.copy(
-                    newArrivals = result.books,
+                    newArrivals = filteredBooks,
                     isLastPage = result.isLastPage,
                     isNewArrivalsLoading = false
                 ) }

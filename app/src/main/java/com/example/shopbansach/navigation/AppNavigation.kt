@@ -16,6 +16,7 @@ import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.view.*
 import com.example.shopbansach.viewmodel.CartViewModel
+import com.example.shopbansach.viewmodel.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -30,6 +31,8 @@ fun AppNavigation(
     
     // Shared ViewModel cho giỏ hàng
     val cartViewModel: CartViewModel = viewModel()
+    // Shared ViewModel cho Home (để dùng chung dữ liệu featuredBooks)
+    val homeViewModel: HomeViewModel = viewModel()
     
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -67,7 +70,11 @@ fun AppNavigation(
             modifier = modifier
         ) {
             composable(route = Screen.Home.route) {
-                HomeScreen(navController = navController)
+                HomeScreen(navController = navController, viewModel = homeViewModel)
+            }
+
+            composable(route = Screen.FeaturedBooks.route) {
+                FeaturedBooksScreen(navController = navController, viewModel = homeViewModel)
             }
 
             composable(route = Screen.Search.route) {

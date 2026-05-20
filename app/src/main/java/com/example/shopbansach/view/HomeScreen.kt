@@ -2,21 +2,11 @@ package com.example.shopbansach.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,19 +18,8 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +46,16 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
+
+    // Tự động cuộn lên đầu phần "Mới cập nhật" khi chuyển trang thành công
+    LaunchedEffect(uiState.currentPage) {
+        // Chỉ cuộn nếu không phải lần đầu tiên vào app
+        if (uiState.currentPage > 1 || uiState.newArrivals.isNotEmpty()) {
+            // Cuộn đến vị trí Header của "Mới cập nhật" (Index 2)
+            listState.animateScrollToItem(2)
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -87,19 +76,26 @@ fun HomeScreen(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = padding.calculateBottomPadding()), 
                 contentPadding = PaddingValues(top = padding.calculateTopPadding())
             ) {
                 item { HomeHeader(navController, uiState.currentUser) }
-                item { StorySlideSection(uiState.featuredBooks, navController) }
+                // Hiển thị tối đa 5 quyển sách ở trang chủ
+                item { StorySlideSection(uiState.featuredBooks.take(5), navController) }
                 item { NewArrivalsHeader() }
                 
-                if (uiState.isNewArrivalsLoading) {
+                if (uiState.isNewArrivalsLoading && uiState.newArrivals.isEmpty()) {
                     item {
-                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp), 
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(40.dp))
                         }
                     }
                 } else {
@@ -107,12 +103,15 @@ fun HomeScreen(
                         NewArrivalItem(book, navController)
                     }
                     
-                    item {
-                        PaginationSection(
-                            currentPage = uiState.currentPage,
-                            totalPages = uiState.totalPages,
-                            onPageChange = { page -> viewModel.loadNewArrivals(page) }
-                        )
+                    if (uiState.newArrivals.isNotEmpty() || uiState.isNewArrivalsLoading) {
+                        item {
+                            PaginationSection(
+                                currentPage = uiState.currentPage,
+                                totalPages = uiState.totalPages,
+                                isEnabled = !uiState.isNewArrivalsLoading,
+                                onPageChange = { page -> viewModel.loadNewArrivals(page) }
+                            )
+                        }
                     }
                 }
                 
@@ -126,6 +125,7 @@ fun HomeScreen(
 fun PaginationSection(
     currentPage: Int,
     totalPages: Int,
+    isEnabled: Boolean = true,
     onPageChange: (Int) -> Unit
 ) {
     Row(
@@ -138,7 +138,7 @@ fun PaginationSection(
         // Nút về Trang Đầu
         IconButton(
             onClick = { onPageChange(1) },
-            enabled = currentPage > 1,
+            enabled = isEnabled && currentPage > 1,
             modifier = Modifier.size(36.dp)
         ) {
             Icon(Icons.Default.FirstPage, contentDescription = "Trang đầu")
@@ -147,7 +147,7 @@ fun PaginationSection(
         // Nút về Trang Trước
         FilledTonalIconButton(
             onClick = { onPageChange(currentPage - 1) },
-            enabled = currentPage > 1,
+            enabled = isEnabled && currentPage > 1,
             modifier = Modifier.size(40.dp)
         ) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null)
@@ -169,7 +169,7 @@ fun PaginationSection(
         // Nút sang Trang Sau
         FilledTonalIconButton(
             onClick = { onPageChange(currentPage + 1) },
-            enabled = currentPage < totalPages,
+            enabled = isEnabled && currentPage < totalPages,
             modifier = Modifier.size(40.dp)
         ) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
@@ -178,7 +178,7 @@ fun PaginationSection(
         // Nút đến Trang Cuối
         IconButton(
             onClick = { onPageChange(totalPages) },
-            enabled = currentPage < totalPages,
+            enabled = isEnabled && currentPage < totalPages,
             modifier = Modifier.size(36.dp)
         ) {
             Icon(Icons.Default.LastPage, contentDescription = "Trang cuối")
@@ -264,7 +264,9 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
                 text = "Xem tất cả",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { /* TODO */ }
+                modifier = Modifier.clickable { 
+                    navController.navigate(Screen.FeaturedBooks.route)
+                }
             )
         }
         

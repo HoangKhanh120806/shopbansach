@@ -33,7 +33,8 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
     private fun loadSuggestions() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val suggestions = repository.getFeaturedBooks()
+            // Chỉ lấy 3 sách gợi ý đầu tiên
+            val suggestions = repository.getFeaturedBooks().take(3)
             _uiState.update { it.copy(suggestions = suggestions, isLoading = false) }
         }
     }
