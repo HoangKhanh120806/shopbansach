@@ -20,6 +20,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.FirstPage
+import androidx.compose.material.icons.filled.LastPage
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
@@ -27,6 +31,8 @@ import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,11 +95,93 @@ fun HomeScreen(
                 item { HomeHeader(navController, uiState.currentUser) }
                 item { StorySlideSection(uiState.featuredBooks, navController) }
                 item { NewArrivalsHeader() }
-                items(uiState.newArrivals, key = { it.id }) { book ->
-                    NewArrivalItem(book, navController)
+                
+                if (uiState.isNewArrivalsLoading) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        }
+                    }
+                } else {
+                    items(uiState.newArrivals, key = { it.id }) { book ->
+                        NewArrivalItem(book, navController)
+                    }
+                    
+                    item {
+                        PaginationSection(
+                            currentPage = uiState.currentPage,
+                            totalPages = uiState.totalPages,
+                            onPageChange = { page -> viewModel.loadNewArrivals(page) }
+                        )
+                    }
                 }
+                
                 item { Spacer(modifier = Modifier.height(20.dp)) }
             }
+        }
+    }
+}
+
+@Composable
+fun PaginationSection(
+    currentPage: Int,
+    totalPages: Int,
+    onPageChange: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp, horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Nút về Trang Đầu
+        IconButton(
+            onClick = { onPageChange(1) },
+            enabled = currentPage > 1,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(Icons.Default.FirstPage, contentDescription = "Trang đầu")
+        }
+
+        // Nút về Trang Trước
+        FilledTonalIconButton(
+            onClick = { onPageChange(currentPage - 1) },
+            enabled = currentPage > 1,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null)
+        }
+        
+        Card(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        ) {
+            Text(
+                text = "$currentPage / $totalPages",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        
+        // Nút sang Trang Sau
+        FilledTonalIconButton(
+            onClick = { onPageChange(currentPage + 1) },
+            enabled = currentPage < totalPages,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+        }
+
+        // Nút đến Trang Cuối
+        IconButton(
+            onClick = { onPageChange(totalPages) },
+            enabled = currentPage < totalPages,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(Icons.Default.LastPage, contentDescription = "Trang cuối")
         }
     }
 }

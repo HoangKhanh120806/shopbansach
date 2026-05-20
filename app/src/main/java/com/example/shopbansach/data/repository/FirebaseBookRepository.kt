@@ -3,6 +3,8 @@ package com.example.shopbansach.data.repository
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.User
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.AggregateSource
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -13,6 +15,49 @@ class FirebaseBookRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val booksCollection = firestore.collection("books")
+
+    data class BookPage(
+        val books: List<Book>,
+        val lastDocument: DocumentSnapshot?,
+        val isLastPage: Boolean
+    )
+
+    suspend fun getTotalBooksCount(): Long {
+        return try {
+            val query = booksCollection.count()
+            val snapshot = query.get(AggregateSource.SERVER).await()
+            snapshot.count
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
+    suspend fun getAllBooksPaged(limit: Long, lastDocument: DocumentSnapshot? = null): BookPage {
+        return try {
+            var query = booksCollection.orderBy("title").limit(limit)
+            if (lastDocument != null) {
+                query = query.startAfter(lastDocument)
+            }
+            val snapshot = query.get().await()
+            val books = snapshot.toObjects(Book::class.java)
+            val lastVisible = if (snapshot.documents.isNotEmpty()) snapshot.documents.last() else null
+            val isLastPage = snapshot.size() < limit
+            BookPage(books, lastVisible, isLastPage)
+        } catch (e: Exception) {
+            BookPage(emptyList(), null, true)
+        }
+    }
+
+    suspend fun getLastPage(limit: Long): BookPage {
+        return try {
+            val query = booksCollection.orderBy("title", Query.Direction.DESCENDING).limit(limit)
+            val snapshot = query.get().await()
+            val books = snapshot.toObjects(Book::class.java).reversed()
+            BookPage(books, null, true)
+        } catch (e: Exception) {
+            BookPage(emptyList(), null, true)
+        }
+    }
 
     suspend fun getAllBooks(limit: Long = 50): List<Book> {
         return try {
@@ -60,15 +105,10 @@ class FirebaseBookRepository {
         return try {
             val validIds = ids.filter { it.isNotEmpty() }.distinct()
             if (validIds.isEmpty()) return emptyList()
-
             val chunks = validIds.chunked(30)
             val allBooks = mutableListOf<Book>()
-            
             for (chunk in chunks) {
-                val snapshot = booksCollection
-                    .whereIn(FieldPath.documentId(), chunk)
-                    .get()
-                    .await()
+                val snapshot = booksCollection.whereIn(FieldPath.documentId(), chunk).get().await()
                 allBooks.addAll(snapshot.toObjects(Book::class.java))
             }
             allBooks
@@ -95,10 +135,7 @@ class FirebaseBookRepository {
     
     suspend fun getBooksByCategory(category: String): List<Book> {
         return try {
-            val snapshot = booksCollection
-                .whereEqualTo("category", category)
-                .limit(50)
-                .get().await()
+            val snapshot = booksCollection.whereEqualTo("category", category).limit(50).get().await()
             snapshot.toObjects(Book::class.java)
         } catch (e: Exception) {
             manualSearchFallback(category)
@@ -131,11 +168,10 @@ class FirebaseBookRepository {
     suspend fun addBook(book: Book): Result<Unit> {
         return try {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
-            
             val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
             val currentUser = userSnapshot.toObject(User::class.java)
             
-            val shopName = currentUser?.shopName?.ifEmpty { currentUser.name } ?: (currentUser?.name ?: "Người bán")
+            val shopName = currentUser?.shopName?.ifEmpty { currentUser.name } ?: currentUser?.name ?: "Người bán"
             val shopAvatar = currentUser?.shopAvatarUrl ?: currentUser?.avatarUrl
 
             val docRef = booksCollection.document(book.id)
@@ -144,10 +180,7 @@ class FirebaseBookRepository {
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
                 val role = userSnapshot.getString("role")
-                
-                if (ownerId != currentUserId && role != "ADMIN") {
-                    throw Exception("Bạn không có quyền")
-                }
+                if (ownerId != currentUserId && role != "ADMIN") throw Exception("Không có quyền")
                 
                 val updates = mapOf(
                     "title" to book.title,
@@ -162,7 +195,6 @@ class FirebaseBookRepository {
                     "shopName" to shopName,
                     "shopAvatarUrl" to shopAvatar
                 ).filterValues { it != null }
-                
                 docRef.update(updates).await()
             } else {
                 val bookWithShopInfo = book.copy(
@@ -185,9 +217,7 @@ class FirebaseBookRepository {
             firestore.runTransaction { transaction ->
                 val snapshot = transaction.get(bookRef)
                 val currentStock = snapshot.getLong("stock") ?: 0L
-                if (currentStock < quantityPurchased.toLong()) {
-                    throw Exception("Hết hàng")
-                }
+                if (currentStock < quantityPurchased.toLong()) throw Exception("Hết hàng")
                 transaction.update(bookRef, "stock", currentStock - quantityPurchased.toLong())
             }.await()
             Result.success(Unit)
@@ -201,15 +231,11 @@ class FirebaseBookRepository {
             val currentUserId = auth.currentUser?.uid ?: throw Exception("Chưa đăng nhập")
             val docRef = booksCollection.document(bookId)
             val existingDoc = docRef.get().await()
-
             if (existingDoc.exists()) {
                 val ownerId = existingDoc.getString("ownerId")
                 val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
                 val role = currentUserDoc.getString("role")
-
-                if (ownerId != currentUserId && role != "ADMIN") {
-                    throw Exception("Không có quyền")
-                }
+                if (ownerId != currentUserId && role != "ADMIN") throw Exception("Không có quyền")
                 docRef.delete().await()
             }
             Result.success(Unit)
