@@ -135,7 +135,8 @@ class FirebaseBookRepository {
             val userSnapshot = firestore.collection("users").document(currentUserId).get().await()
             val currentUser = userSnapshot.toObject(User::class.java)
             
-            val shopName = if (!currentUser?.shopName.isNullOrEmpty()) currentUser?.shopName!! else (currentUser?.name ?: "Người bán")
+            val name = currentUser?.name ?: "Người bán"
+            val shopName = currentUser?.shopName?.ifEmpty { name } ?: name
             val shopAvatar = currentUser?.shopAvatarUrl ?: currentUser?.avatarUrl
 
             val docRef = booksCollection.document(book.id)
@@ -146,7 +147,7 @@ class FirebaseBookRepository {
                 val role = userSnapshot.getString("role")
                 
                 if (ownerId != currentUserId && role != "ADMIN") {
-                    throw Exception("Bạn không có quyền chỉnh sửa sách này")
+                    throw Exception("Không có quyền")
                 }
                 
                 val updates = mapOf(
@@ -185,10 +186,10 @@ class FirebaseBookRepository {
             firestore.runTransaction { transaction ->
                 val snapshot = transaction.get(bookRef)
                 val currentStock = snapshot.getLong("stock") ?: 0L
-                if (currentStock < quantityPurchased) {
-                    throw Exception("Sản phẩm '${snapshot.getString("title")}' đã hết hàng")
+                if (currentStock < quantityPurchased.toLong()) {
+                    throw Exception("Hết hàng")
                 }
-                transaction.update(bookRef, "stock", currentStock - quantityPurchased)
+                transaction.update(bookRef, "stock", currentStock - quantityPurchased.toLong())
             }.await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -208,7 +209,7 @@ class FirebaseBookRepository {
                 val role = currentUserDoc.getString("role")
 
                 if (ownerId != currentUserId && role != "ADMIN") {
-                    throw Exception("Bạn không có quyền xóa sách này")
+                    throw Exception("Không có quyền")
                 }
                 docRef.delete().await()
             }

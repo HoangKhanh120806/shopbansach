@@ -25,7 +25,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -97,7 +96,7 @@ fun AdminUserManageScreen(
                     ) {
                         val sortedUsers = uiState.filteredUsers.sortedByDescending { it.role == UserRole.PENDING_SELLER }
                         
-                        items(sortedUsers) { user ->
+                        items(sortedUsers, key = { it.id }) { user ->
                             UserAdminItem(
                                 user = user,
                                 onChangeRole = { newRole -> viewModel.changeUserRole(user.id, newRole) },
@@ -177,10 +176,7 @@ fun UserAdminItem(
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        text = when(user.role) {
-                            UserRole.PENDING_SELLER -> "CHỜ DUYỆT BÁN HÀNG"
-                            else -> user.role.name
-                        },
+                        text = if (user.role == UserRole.PENDING_SELLER) "CHỜ DUYỆT BÁN HÀNG" else user.role.name,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -205,15 +201,12 @@ fun UserAdminItem(
                 }
                 
                 if (user.role != UserRole.ADMIN) {
-                    // Nút Sửa
                     IconButton(onClick = { showEditDialog = true }) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.secondary)
                     }
-                    // Nút đổi Role
                     IconButton(onClick = { showRoleDialog = true }) {
                         Icon(Icons.Default.Shield, contentDescription = "Change Role", tint = MaterialTheme.colorScheme.primary)
                     }
-                    // Nút Xóa
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                     }
@@ -222,7 +215,6 @@ fun UserAdminItem(
         }
     }
 
-    // Dialog Sửa thông tin
     if (showEditDialog) {
         var editName by remember { mutableStateOf(user.name) }
         var editShopName by remember { mutableStateOf(user.shopName ?: "") }

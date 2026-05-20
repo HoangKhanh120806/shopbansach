@@ -29,7 +29,6 @@ class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    // Khai báo listener để có thể gỡ bỏ sau này
     private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
         viewModelScope.launch {
             if (firebaseAuth.currentUser != null) {
@@ -43,7 +42,6 @@ class HomeViewModel : ViewModel() {
 
     init {
         loadData()
-        // Đăng ký listener
         auth.addAuthStateListener(authStateListener)
     }
 
@@ -64,13 +62,12 @@ class HomeViewModel : ViewModel() {
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
-                    errorMessage = "Không thể tải dữ liệu: ${e.message}"
+                    errorMessage = "Lỗi: ${e.message}"
                 ) }
             }
         }
     }
 
-    // Gỡ bỏ listener khi ViewModel không còn dùng nữa để tránh rò rỉ bộ nhớ
     override fun onCleared() {
         super.onCleared()
         auth.removeAuthStateListener(authStateListener)

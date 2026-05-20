@@ -2,7 +2,17 @@ package com.example.shopbansach.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,9 +20,25 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Museum
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,7 +92,6 @@ fun SearchScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Search Bar Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -120,7 +145,6 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (uiState.searchQuery.isEmpty()) {
-                        // Trạng thái chưa tìm kiếm
                         item {
                             Text(
                                 text = "Gợi ý cho bạn",
@@ -131,7 +155,7 @@ fun SearchScreen(
                             )
                         }
 
-                        items(uiState.suggestions) { book ->
+                        items(uiState.suggestions, key = { it.id }) { book ->
                             SearchItemRow(book) {
                                 navController.navigate(Screen.BookDetail.createRoute(book.id))
                             }
@@ -156,7 +180,6 @@ fun SearchScreen(
                             })
                         }
                     } else {
-                        // Trạng thái đang tìm kiếm
                         if (uiState.searchResults.isEmpty()) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
@@ -164,7 +187,7 @@ fun SearchScreen(
                                 }
                             }
                         } else {
-                            items(uiState.searchResults) { book ->
+                            items(uiState.searchResults, key = { it.id }) { book ->
                                 SearchItemRow(book) {
                                     navController.navigate(Screen.BookDetail.createRoute(book.id))
                                 }
@@ -293,7 +316,6 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
             modifier = Modifier.padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ảnh sách
             Box(
                 modifier = Modifier
                     .size(65.dp, 95.dp)
@@ -301,7 +323,7 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .shadow(1.dp, RoundedCornerShape(8.dp))
             ) {
-                if (!book.imageUrl.isNullOrEmpty()) {
+                if (book.imageUrl != null) {
                     AsyncImage(
                         model = book.imageUrl,
                         contentDescription = null,
@@ -314,7 +336,6 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                // Tên sách in đậm
                 Text(
                     text = book.title,
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -324,7 +345,6 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 
-                // Tên Shop với icon Storefront (Khớp với ảnh mẫu)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 4.dp)
@@ -337,14 +357,13 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (book.shopName.isNotEmpty()) book.shopName else "Cửa hàng sách",
+                        text = book.shopName.ifEmpty { "Người bán" },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Black.copy(alpha = 0.9f),
                         fontWeight = FontWeight.Medium
                     )
                 }
 
-                // Tên tác giả màu xám
                 Text(
                     text = book.author,
                     style = MaterialTheme.typography.bodySmall,
@@ -353,7 +372,6 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                 )
             }
             
-            // Cột bên phải: Giá và Đánh giá
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = CurrencyUtils.formatPrice(book.price),

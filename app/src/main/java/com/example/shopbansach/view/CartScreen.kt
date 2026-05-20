@@ -253,7 +253,6 @@ fun CartItemCard(
                     color = if (isOutOfStock) Color.Gray else Color.Unspecified
                 )
                 
-                // Hiển thị tên Cửa hàng (Shop Name) giống mẫu
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 2.dp)

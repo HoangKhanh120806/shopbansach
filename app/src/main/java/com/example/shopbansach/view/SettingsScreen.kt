@@ -135,7 +135,7 @@ fun SettingsScreen(navController: NavController) {
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {

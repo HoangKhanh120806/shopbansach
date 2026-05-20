@@ -19,9 +19,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 sealed class CartActionState {
-    object Idle : CartActionState()
-    object Loading : CartActionState()
-    object Success : CartActionState()
+    data object Idle : CartActionState()
+    data object Loading : CartActionState()
+    data object Success : CartActionState()
     data class Error(val message: String) : CartActionState()
 }
 
@@ -52,7 +52,6 @@ class CartViewModel(
     }
 
     fun loadCartItems() {
-        val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -73,7 +72,7 @@ class CartViewModel(
                             imageUrl = book.imageUrl,
                             author = book.author,
                             ownerId = book.ownerId,
-                            shopName = book.shopName, // Cập nhật tên shop từ dữ liệu sách mới nhất
+                            shopName = book.shopName,
                             stock = book.stock
                         )
                     } ?: item.copy(stock = 0)
@@ -96,7 +95,7 @@ class CartViewModel(
                 imageUrl = book.imageUrl,
                 author = book.author,
                 ownerId = book.ownerId,
-                shopName = book.shopName, // Lưu tên shop vào giỏ hàng
+                shopName = book.shopName,
                 quantity = quantity,
                 stock = book.stock
             )
@@ -105,7 +104,7 @@ class CartViewModel(
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
             } else {
-                _uiState.update { it.copy(actionState = CartActionState.Error(result.exceptionOrNull()?.message ?: "Lỗi thêm vào giỏ")) }
+                _uiState.update { it.copy(actionState = CartActionState.Error(result.exceptionOrNull()?.message ?: "Lỗi giỏ hàng")) }
             }
         }
     }
@@ -164,13 +163,10 @@ class CartViewModel(
                     val sellerIds = mutableSetOf<String>()
 
                     checkoutItems.forEach { item ->
-                        val snapshot = snapshots[item] ?: throw Exception("Không thể lấy dữ liệu sản phẩm")
-                        
-                        if (!snapshot.exists()) throw Exception("Sản phẩm '${item.title}' đã bị xóa")
-
+                        val snapshot = snapshots[item] ?: throw Exception("Lỗi sản phẩm")
+                        if (!snapshot.exists()) throw Exception("Sản phẩm đã bị xóa")
                         val stock = snapshot.getLong("stock") ?: 0L
-                        if (stock < item.quantity) throw Exception("Sản phẩm '${snapshot.getString("title")}' chỉ còn $stock cuốn")
-                        
+                        if (stock < item.quantity.toLong()) throw Exception("Sản phẩm '${item.title}' hết hàng")
                         val ownerId = snapshot.getString("ownerId") ?: ""
                         finalItems.add(item.copy(ownerId = ownerId, stock = stock.toInt()))
                         if (ownerId.isNotEmpty()) sellerIds.add(ownerId)
@@ -179,7 +175,7 @@ class CartViewModel(
                     checkoutItems.forEach { item ->
                         val snapshot = snapshots[item]!!
                         val currentStock = snapshot.getLong("stock") ?: 0L
-                        transaction.update(snapshot.reference, "stock", currentStock - item.quantity)
+                        transaction.update(snapshot.reference, "stock", currentStock - item.quantity.toLong())
                     }
 
                     val orderRef = firestore.collection("orders").document()
@@ -199,7 +195,6 @@ class CartViewModel(
                         val cartColl = firestore.collection("users").document(currentUserId).collection("cart")
                         checkoutItems.forEach { transaction.delete(cartColl.document(it.bookId)) }
                     }
-
                     orderRef.id
                 }.await()
 

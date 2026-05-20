@@ -1,12 +1,16 @@
 package com.example.shopbansach.view
 
 import android.widget.Toast
-import androidx.compose.foundation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -65,7 +69,8 @@ fun BookDetailScreen(
             Toast.makeText(context, "Đã thêm vào giỏ hàng!", Toast.LENGTH_SHORT).show()
             cartViewModel.resetActionState()
         } else if (cartUiState.actionState is CartActionState.Error) {
-            Toast.makeText(context, (cartUiState.actionState as CartActionState.Error).message, Toast.LENGTH_SHORT).show()
+            val error = cartUiState.actionState as CartActionState.Error
+            Toast.makeText(context, error.message, Toast.LENGTH_SHORT).show()
             cartViewModel.resetActionState()
         }
     }
@@ -156,14 +161,12 @@ fun BookDetailScreen(
                             )
                             SuggestionChip(
                                 onClick = { },
-                                label = { Text(book.category) },
-                                colors = SuggestionChipDefaults.suggestionChipColors(labelColor = MaterialTheme.colorScheme.tertiary)
+                                label = { Text(book.category) }
                             )
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Hiển thị thông tin Shop nổi bật
                         SellerInfoSection(uiState.seller, book) {
                             if (uiState.seller != null) {
                                 navController.navigate(Screen.SellerShop.createRoute(uiState.seller!!.id))
@@ -220,7 +223,7 @@ fun BookDetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 contentPadding = PaddingValues(bottom = 32.dp)
                             ) {
-                                items(uiState.relatedBooks) { relatedBook ->
+                                items(uiState.relatedBooks, key = { it.id }) { relatedBook ->
                                     RelatedBookCard(relatedBook) {
                                         navController.navigate(Screen.BookDetail.createRoute(relatedBook.id))
                                     }
@@ -237,7 +240,6 @@ fun BookDetailScreen(
         val book = uiState.book!!
         ModalBottomSheet(
             onDismissRequest = { showQuantitySheet = false },
-            sheetState = rememberModalBottomSheetState(),
             containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {

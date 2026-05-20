@@ -64,7 +64,7 @@ fun ProfileScreen(
         AlertDialog(
             onDismissRequest = { showRegisterSellerDialog = false },
             title = { Text("Đăng ký bán hàng") },
-            text = { Text("Bạn có muốn gửi yêu cầu đăng ký bán hàng? Admin sẽ xem xét và duyệt yêu cầu của bạn.") },
+            text = { Text("Gửi yêu cầu đăng ký bán hàng tới Admin?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -72,16 +72,14 @@ fun ProfileScreen(
                             user?.let {
                                 val result = authRepository.updateUserRole(it.id, UserRole.PENDING_SELLER)
                                 if (result.isSuccess) {
-                                    Toast.makeText(context, "Yêu cầu đã được gửi! Chờ Admin duyệt.", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Đã gửi yêu cầu!", Toast.LENGTH_SHORT).show()
                                     user = authRepository.getCurrentUserData() 
                                 }
                             }
                         }
                         showRegisterSellerDialog = false
                     }
-                ) {
-                    Text("Gửi yêu cầu")
-                }
+                ) { Text("Gửi") }
             },
             dismissButton = {
                 TextButton(onClick = { showRegisterSellerDialog = false }) { Text("Hủy") }
@@ -94,9 +92,7 @@ fun ProfileScreen(
             BottomBar(
                 currentRoute = Screen.Profile.route,
                 onNavigate = { route ->
-                    if (route != Screen.Profile.route) {
-                        navController.navigate(route)
-                    }
+                    if (route != Screen.Profile.route) navController.navigate(route)
                 }
             )
         },
@@ -104,7 +100,7 @@ fun ProfileScreen(
     ) { padding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                CircularProgressIndicator()
             }
         } else {
             Column(
@@ -171,7 +167,7 @@ fun ProfileScreen(
                                 UserRole.SELLER, UserRole.ADMIN -> {
                                     ProfileMenuItem(
                                         icon = Icons.Default.AddBusiness,
-                                        title = "Quản lý Shop của tôi",
+                                        title = "Quản lý Shop",
                                         titleColor = MaterialTheme.colorScheme.tertiary,
                                         onClick = { navController.navigate(Screen.MyShop.route) }
                                     )
@@ -179,10 +175,10 @@ fun ProfileScreen(
                                 UserRole.PENDING_SELLER -> {
                                     ProfileMenuItem(
                                         icon = Icons.Default.HourglassEmpty,
-                                        title = "Đang chờ Admin duyệt bán hàng",
+                                        title = "Đang chờ duyệt",
                                         titleColor = MaterialTheme.colorScheme.secondary,
                                         onClick = { 
-                                            Toast.makeText(context, "Yêu cầu của bạn đang được xử lý", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Yêu cầu đang chờ duyệt", Toast.LENGTH_SHORT).show()
                                         }
                                     )
                                 }

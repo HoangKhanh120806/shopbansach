@@ -2,7 +2,18 @@ package com.example.shopbansach.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -13,8 +24,17 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,7 +89,7 @@ fun HomeScreen(
                 item { HomeHeader(navController, uiState.currentUser) }
                 item { StorySlideSection(uiState.featuredBooks, navController) }
                 item { NewArrivalsHeader() }
-                items(uiState.newArrivals) { book ->
+                items(uiState.newArrivals, key = { it.id }) { book ->
                     NewArrivalItem(book, navController)
                 }
                 item { Spacer(modifier = Modifier.height(20.dp)) }
@@ -98,7 +118,7 @@ fun HomeHeader(navController: NavController, currentUser: User?) {
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = currentUser?.let { "Chào mừng, ${it.name}" } ?: "Thế giới sách trong tầm tay",
+                text = if (currentUser != null) "Chào mừng, ${currentUser.name}" else "Thế giới sách trong tầm tay",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -120,9 +140,9 @@ fun HomeHeader(navController: NavController, currentUser: User?) {
                     .clickable { navController.navigate(Screen.Profile.route) },
                 contentAlignment = Alignment.Center
             ) {
-                if (!currentUser?.avatarUrl.isNullOrEmpty()) {
+                if (currentUser?.avatarUrl != null) {
                     AsyncImage(
-                        model = currentUser?.avatarUrl,
+                        model = currentUser.avatarUrl,
                         contentDescription = "Profile",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -164,7 +184,7 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(books) { book ->
+            items(books, key = { it.id }) { book ->
                 FeaturedBookCard(book) {
                     navController.navigate(Screen.BookDetail.createRoute(book.id))
                 }
@@ -188,7 +208,7 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            if (!book.imageUrl.isNullOrEmpty()) {
+            if (book.imageUrl != null) {
                 AsyncImage(
                     model = book.imageUrl,
                     contentDescription = null,
@@ -272,12 +292,7 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 
-                // Hiển thị tên Shop thực tế với icon như trong ảnh mẫu bạn gửi
-                Row(
-                    verticalAlignment = Alignment.CenterVertically, 
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     Icon(
                         Icons.Default.Storefront, 
                         null, 
