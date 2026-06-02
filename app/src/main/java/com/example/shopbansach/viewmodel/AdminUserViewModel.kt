@@ -2,9 +2,11 @@ package com.example.shopbansach.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.shopbansach.data.model.Notification
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
+import com.example.shopbansach.data.repository.NotificationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +22,10 @@ data class AdminUserUiState(
     val actionSuccessMessage: String? = null
 )
 
-class AdminUserViewModel(private val repository: AuthRepository = AuthRepository()) : ViewModel() {
+class AdminUserViewModel(
+    private val repository: AuthRepository = AuthRepository(),
+    private val notificationRepository: NotificationRepository = NotificationRepository()
+) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AdminUserUiState())
     val uiState: StateFlow<AdminUserUiState> = _uiState.asStateFlow()
@@ -68,6 +73,25 @@ class AdminUserViewModel(private val repository: AuthRepository = AuthRepository
             _uiState.update { it.copy(isLoading = true) }
             val result = repository.updateUserRole(userId, newRole)
             if (result.isSuccess) {
+                // TẠO THÔNG BÁO KHI DUYỆT NGƯỜI BÁN
+                if (newRole == UserRole.SELLER) {
+                    notificationRepository.createNotification(
+                        Notification(
+                            userId = userId,
+                            title = "Chúc mừng!",
+                            message = "Yêu cầu bán hàng của bạn đã được Admin phê duyệt. Bạn có thể đăng bán sách ngay bây giờ."
+                        )
+                    )
+                } else if (newRole == UserRole.USER) {
+                    notificationRepository.createNotification(
+                        Notification(
+                            userId = userId,
+                            title = "Cập nhật tài khoản",
+                            message = "Quyền hạn của bạn đã được thay đổi thành Người dùng thường."
+                        )
+                    )
+                }
+
                 _uiState.update { it.copy(actionSuccessMessage = "Đã cập nhật quyền thành ${newRole.name}") }
                 loadUsers() 
             } else {
@@ -76,19 +100,14 @@ class AdminUserViewModel(private val repository: AuthRepository = AuthRepository
         }
     }
 
-    // Hàm Admin sửa thông tin người dùng/người bán
     fun updateUserInfo(userId: String, newName: String, newShopName: String?) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                // Cập nhật tên cơ bản
                 repository.updateUserProfile(userId, newName)
-                
-                // Nếu là người bán, cập nhật thêm tên Shop (đồng bộ lên cả sách)
                 if (newShopName != null) {
                     repository.updateShopName(userId, newShopName)
                 }
-                
                 _uiState.update { it.copy(actionSuccessMessage = "Đã cập nhật thông tin thành công") }
                 loadUsers()
             } catch (e: Exception) {

@@ -2,7 +2,18 @@ package com.example.shopbansach.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -12,10 +23,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.FirstPage
-import androidx.compose.material.icons.filled.LastPage
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
@@ -39,20 +50,21 @@ import com.example.shopbansach.data.model.User
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.HomeViewModel
+import com.example.shopbansach.viewmodel.NotificationViewModel
 
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    notificationViewModel: NotificationViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val notificationUiState by notificationViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
 
-    // Tự động cuộn lên đầu phần "Mới cập nhật" khi chuyển trang thành công
+    // Tự động cuộn lên đầu phần "Mới cập nhật" khi chuyển trang
     LaunchedEffect(uiState.currentPage) {
-        // Chỉ cuộn nếu không phải lần đầu tiên vào app
         if (uiState.currentPage > 1 || uiState.newArrivals.isNotEmpty()) {
-            // Cuộn đến vị trí Header của "Mới cập nhật" (Index 2)
             listState.animateScrollToItem(2)
         }
     }
@@ -82,17 +94,20 @@ fun HomeScreen(
                     .padding(bottom = padding.calculateBottomPadding()), 
                 contentPadding = PaddingValues(top = padding.calculateTopPadding())
             ) {
-                item { HomeHeader(navController, uiState.currentUser) }
-                // Hiển thị tối đa 5 quyển sách ở trang chủ
+                item { 
+                    HomeHeader(
+                        navController = navController, 
+                        currentUser = uiState.currentUser,
+                        unreadNotificationsCount = notificationUiState.unreadCount
+                    ) 
+                }
                 item { StorySlideSection(uiState.featuredBooks.take(5), navController) }
                 item { NewArrivalsHeader() }
                 
                 if (uiState.isNewArrivalsLoading && uiState.newArrivals.isEmpty()) {
                     item {
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp), 
+                            modifier = Modifier.fillMaxWidth().height(300.dp), 
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(40.dp))
@@ -103,7 +118,7 @@ fun HomeScreen(
                         NewArrivalItem(book, navController)
                     }
                     
-                    if (uiState.newArrivals.isNotEmpty() || uiState.isNewArrivalsLoading) {
+                    if (uiState.newArrivals.isNotEmpty()) {
                         item {
                             PaginationSection(
                                 currentPage = uiState.currentPage,
@@ -116,6 +131,90 @@ fun HomeScreen(
                 }
                 
                 item { Spacer(modifier = Modifier.height(20.dp)) }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeHeader(
+    navController: NavController, 
+    currentUser: User?,
+    unreadNotificationsCount: Int
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 20.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Cozy Reads",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = FontFamily.Serif,
+                    letterSpacing = (-0.5).sp
+                ),
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = if (currentUser != null) "Chào mừng, ${currentUser.name}" else "Thế giới sách trong tầm tay",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Biểu tượng thông báo với chấm đỏ số lượng
+            IconButton(
+                onClick = { navController.navigate(Screen.Notifications.route) },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+            ) {
+                BadgedBox(
+                    badge = {
+                        if (unreadNotificationsCount > 0) {
+                            Badge(
+                                containerColor = Color.Red,
+                                contentColor = Color.White
+                            ) {
+                                Text(unreadNotificationsCount.toString())
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsNone, 
+                        contentDescription = "Notifications",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { navController.navigate(Screen.Profile.route) },
+                contentAlignment = Alignment.Center
+            ) {
+                if (currentUser?.avatarUrl != null) {
+                    AsyncImage(
+                        model = currentUser.avatarUrl,
+                        contentDescription = "Profile",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary)
+                }
             }
         }
     }
@@ -135,16 +234,14 @@ fun PaginationSection(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Nút về Trang Đầu
         IconButton(
             onClick = { onPageChange(1) },
             enabled = isEnabled && currentPage > 1,
             modifier = Modifier.size(36.dp)
         ) {
-            Icon(Icons.Default.FirstPage, contentDescription = "Trang đầu")
+            Icon(Icons.Default.SkipPrevious, contentDescription = "Trang đầu")
         }
 
-        // Nút về Trang Trước
         FilledTonalIconButton(
             onClick = { onPageChange(currentPage - 1) },
             enabled = isEnabled && currentPage > 1,
@@ -166,7 +263,6 @@ fun PaginationSection(
             )
         }
         
-        // Nút sang Trang Sau
         FilledTonalIconButton(
             onClick = { onPageChange(currentPage + 1) },
             enabled = isEnabled && currentPage < totalPages,
@@ -175,70 +271,12 @@ fun PaginationSection(
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
         }
 
-        // Nút đến Trang Cuối
         IconButton(
             onClick = { onPageChange(totalPages) },
             enabled = isEnabled && currentPage < totalPages,
             modifier = Modifier.size(36.dp)
         ) {
-            Icon(Icons.Default.LastPage, contentDescription = "Trang cuối")
-        }
-    }
-}
-
-@Composable
-fun HomeHeader(navController: NavController, currentUser: User?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 20.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = "Cozy Reads",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = FontFamily.Serif,
-                    letterSpacing = (-0.5).sp
-                ),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = if (currentUser != null) "Chào mừng, ${currentUser.name}" else "Thế giới sách trong tầm tay",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = { /* TODO */ },
-                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
-            ) {
-                Icon(Icons.Default.NotificationsNone, null, tint = MaterialTheme.colorScheme.primary)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { navController.navigate(Screen.Profile.route) },
-                contentAlignment = Alignment.Center
-            ) {
-                if (currentUser?.avatarUrl != null) {
-                    AsyncImage(
-                        model = currentUser.avatarUrl,
-                        contentDescription = "Profile",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary)
-                }
-            }
+            Icon(Icons.Default.SkipNext, contentDescription = "Trang cuối")
         }
     }
 }
@@ -265,7 +303,7 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable { 
-                    navController.navigate(Screen.FeaturedBooks.route)
+                    navController.navigate(Screen.Search.route)
                 }
             )
         }

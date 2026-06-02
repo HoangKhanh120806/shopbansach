@@ -1,8 +1,6 @@
 package com.example.shopbansach.view
 
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,12 +37,13 @@ fun AdminOrderManageScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(uiState.errorMessage, uiState.actionSuccess) {
+    // Xử lý thông báo lỗi và thành công
+    LaunchedEffect(uiState.errorMessage, uiState.actionSuccessMessage) {
         uiState.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Lỗi: $it", Toast.LENGTH_LONG).show()
             viewModel.clearMessages()
         }
-        uiState.actionSuccess?.let {
+        uiState.actionSuccessMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.clearMessages()
         }
@@ -62,25 +62,42 @@ fun AdminOrderManageScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.orders.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Chưa có đơn hàng nào trong hệ thống")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(uiState.orders) { order ->
-                    AdminOrderItemCard(
-                        order = order,
-                        onStatusChange = { newStatus -> viewModel.updateStatus(order.id, newStatus) }
-                    )
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Thanh tìm kiếm cho Admin
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = { viewModel.onSearchQueryChange(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                placeholder = { Text("Tìm theo mã đơn hoặc trạng thái...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
+            )
+
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (uiState.filteredOrders.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Không tìm thấy đơn hàng nào")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(uiState.filteredOrders, key = { it.id }) { order ->
+                        AdminOrderItemCard(
+                            order = order,
+                            onStatusChange = { newStatus -> 
+                                viewModel.updateOrderStatus(order.id, newStatus) 
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -170,7 +187,11 @@ fun AdminOrderItemCard(
                     }
                 }
             },
-            confirmButton = {}
+            confirmButton = {
+                TextButton(onClick = { showStatusDialog = false }) {
+                    Text("Đóng")
+                }
+            }
         )
     }
 }

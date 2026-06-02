@@ -2,17 +2,7 @@ package com.example.shopbansach.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,22 +10,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Brush
-import androidx.compose.material.icons.filled.Museum
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -213,49 +189,56 @@ fun CategoriesGrid(onCategoryClick: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             CategoryCard(
-                title = "Văn học Kinh điển",
-                subtitle = "Classic",
+                title = "Văn học",
+                subtitle = "Literature",
                 icon = Icons.AutoMirrored.Filled.MenuBook,
                 color = Color(0xFFAAB396),
-                modifier = Modifier.weight(1.1f),
+                modifier = Modifier.weight(1f),
                 onClick = { onCategoryClick("Văn học") }
             )
             CategoryCard(
-                title = "Nghệ thuật & Thiết kế",
-                subtitle = "Art",
-                icon = Icons.Default.Brush,
+                title = "Kinh tế",
+                subtitle = "Economy",
+                icon = Icons.Default.TrendingUp,
                 color = Color(0xFFD6BFA9),
                 modifier = Modifier.weight(1f),
-                onClick = { onCategoryClick("Nghệ thuật") }
+                onClick = { onCategoryClick("Kinh tế") }
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(
-                modifier = Modifier.weight(1.1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                CategoryCard(
-                    title = "Tâm lý học",
-                    subtitle = "Psychology",
-                    icon = Icons.Default.Psychology,
-                    color = Color(0xFFC89C81),
-                    onClick = { onCategoryClick("Tâm lý") }
-                )
-                CategoryCard(
-                    title = "Lịch sử & Văn hóa",
-                    subtitle = "History",
-                    icon = Icons.Default.Museum,
-                    color = Color(0xFFAAB396),
-                    onClick = { onCategoryClick("Lịch sử") }
-                )
-            }
             CategoryCard(
-                title = "Du ký & Hồi ký",
-                subtitle = "Travel",
-                icon = Icons.Default.AutoStories,
+                title = "Tâm lý",
+                subtitle = "Psychology",
+                icon = Icons.Default.Psychology,
+                color = Color(0xFFC89C81),
+                modifier = Modifier.weight(1f),
+                onClick = { onCategoryClick("Tâm lý") }
+            )
+            CategoryCard(
+                title = "Kỹ năng sống",
+                subtitle = "Life Skills",
+                icon = Icons.Default.Lightbulb,
+                color = Color(0xFFAAB396),
+                modifier = Modifier.weight(1f),
+                onClick = { onCategoryClick("Kỹ năng sống") }
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            CategoryCard(
+                title = "Thiếu nhi",
+                subtitle = "Children",
+                icon = Icons.Default.ChildCare,
                 color = Color(0xFFE4E2DD),
                 modifier = Modifier.weight(1f),
-                onClick = { onCategoryClick("Du ký") }
+                onClick = { onCategoryClick("Thiếu nhi") }
+            )
+            CategoryCard(
+                title = "Truyện tranh",
+                subtitle = "Comics",
+                icon = Icons.Default.AutoStories,
+                color = Color(0xFFD6BFA9),
+                modifier = Modifier.weight(1f),
+                onClick = { onCategoryClick("Truyện tranh") }
             )
         }
     }
@@ -403,7 +386,7 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
 fun RecentSearchesSection(onTagClick: (String) -> Unit) {
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
-            text = "Tìm kiếm gần đây",
+            text = "Tìm kiếm nhanh",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
@@ -412,9 +395,9 @@ fun RecentSearchesSection(onTagClick: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            RecentSearchTag("Kinh điển", onClick = { onTagClick("Văn học") })
-            RecentSearchTag("Giải thưởng", onClick = { onTagClick("Best seller") })
-            RecentSearchTag("Tiểu thuyết", onClick = { onTagClick("Tiểu thuyết") })
+            RecentSearchTag("Ngoại ngữ", onClick = { onTagClick("Ngoại ngữ") })
+            RecentSearchTag("Best seller", onClick = { onTagClick("Văn học") })
+            RecentSearchTag("Khác", onClick = { onTagClick("Khác") })
         }
     }
 }

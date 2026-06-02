@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.Address
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.CartItem
+import com.example.shopbansach.data.model.Notification
 import com.example.shopbansach.data.model.Order
 import com.example.shopbansach.data.repository.CartRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import com.example.shopbansach.data.repository.NotificationRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,9 +20,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 sealed class CartActionState {
-    object Idle : CartActionState()
-    object Loading : CartActionState()
-    object Success : CartActionState()
+    data object Idle : CartActionState()
+    data object Loading : CartActionState()
+    data object Success : CartActionState()
     data class Error(val message: String) : CartActionState()
 }
 
@@ -33,7 +35,8 @@ data class CartUiState(
 
 class CartViewModel(
     private val repository: CartRepository = CartRepository(),
-    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository()
+    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository(),
+    private val notificationRepository: NotificationRepository = NotificationRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CartUiState())
@@ -102,7 +105,7 @@ class CartViewModel(
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
             } else {
-                _uiState.update { it.copy(actionState = CartActionState.Error("Lỗi thêm vào giỏ")) }
+                _uiState.update { it.copy(actionState = CartActionState.Error("Lỗi giỏ hàng")) }
             }
         }
     }
@@ -164,7 +167,7 @@ class CartViewModel(
                         if (!snapshot.exists()) throw Exception("Sản phẩm không tồn tại")
 
                         val stock = snapshot.getLong("stock") ?: 0L
-                        if (stock < item.quantity.toLong()) throw Exception("Hết hàng")
+                        if (stock < item.quantity.toLong()) throw Exception("Sản phẩm hết hàng")
 
                         val ownerId = snapshot.getString("ownerId") ?: ""
                         finalItems.add(item.copy(ownerId = ownerId, stock = stock.toInt()))
@@ -196,6 +199,32 @@ class CartViewModel(
                     }
                     orderRef.id
                 }.await()
+
+                // THÔNG BÁO CHO SELLER VÀ BUYER
+                // 1. Thông báo cho người mua
+                notificationRepository.createNotification(
+                    Notification(
+                        userId = currentUserId,
+                        title = "Đặt hàng thành công",
+                        message = "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được tạo. Vui lòng chờ Shop xác nhận.",
+                        orderId = orderId
+                    )
+                )
+
+                // 2. Thông báo cho từng người bán
+                val uniqueSellers = checkoutItems.map { it.ownerId }.distinct()
+                uniqueSellers.forEach { sellerId ->
+                    if (sellerId.isNotEmpty()) {
+                        notificationRepository.createNotification(
+                            Notification(
+                                userId = sellerId,
+                                title = "Đơn hàng mới",
+                                message = "Bạn có đơn hàng mới #${orderId.takeLast(6).uppercase()}. Hãy vào kiểm tra và duyệt ngay!",
+                                orderId = orderId
+                            )
+                        )
+                    }
+                }
 
                 onComplete(orderId)
                 loadCartItems()
