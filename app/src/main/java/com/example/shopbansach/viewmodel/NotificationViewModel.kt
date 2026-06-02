@@ -35,14 +35,14 @@ class NotificationViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             repository.getNotificationsFlow(userId)
-                .catch { _ ->
+                .catch { _ -> 
                     _uiState.update { it.copy(isLoading = false) }
                 }
                 .collect { list ->
                     _uiState.update { state ->
                         state.copy(
                             notifications = list,
-                            unreadCount = list.count { !it.isRead },
+                            unreadCount = list.count { notification -> !notification.isRead },
                             isLoading = false
                         )
                     }

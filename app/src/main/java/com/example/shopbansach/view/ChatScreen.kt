@@ -1,5 +1,6 @@
 package com.example.shopbansach.view
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,6 +38,7 @@ fun ChatScreen(
     viewModel: ChatViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -52,13 +54,20 @@ fun ChatScreen(
         }
     }
 
+    // Hiển thị Toast nếu có lỗi
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            Toast.makeText(context, "Lỗi Chat: $it", Toast.LENGTH_LONG).show()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(
-                            model = uiState.otherUser?.avatarUrl ?: uiState.otherUser?.shopAvatarUrl,
+                            model = uiState.otherUser?.shopAvatarUrl ?: uiState.otherUser?.avatarUrl,
                             contentDescription = null,
                             modifier = Modifier
                                 .size(36.dp)
@@ -116,24 +125,29 @@ fun ChatScreen(
             }
         }
     ) { padding ->
-        if (uiState.isLoading && uiState.messages.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(uiState.messages) { message ->
-                    MessageBubble(
-                        message = message,
-                        isMine = message.senderId == currentUserId
-                    )
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (uiState.isLoading && uiState.messages.isEmpty()) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (uiState.errorMessage != null && uiState.messages.isEmpty()) {
+                // Hiển thị lỗi ngay trên màn hình nếu không tải được tin nhắn
+                Text(
+                    text = uiState.errorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp)
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(uiState.messages) { message ->
+                        MessageBubble(
+                            message = message,
+                            isMine = message.senderId == currentUserId
+                        )
+                    }
                 }
             }
         }
