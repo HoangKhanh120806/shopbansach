@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -72,11 +73,14 @@ fun SellerShopScreen(
             }
         } else {
             Column(modifier = Modifier.padding(padding)) {
-                // Header Shop
+                // Header Shop với nút Chat
                 SellerHeaderSection(
                     name = uiState.seller?.shopName ?: uiState.seller?.name ?: "Shop người bán",
                     avatarUrl = uiState.seller?.shopAvatarUrl,
-                    memberSince = uiState.seller?.memberSince ?: "2024"
+                    memberSince = uiState.seller?.memberSince ?: "2024",
+                    onChatClick = {
+                        navController.navigate(Screen.Chat.createRoute(sellerId))
+                    }
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
@@ -107,7 +111,12 @@ fun SellerShopScreen(
 }
 
 @Composable
-fun SellerHeaderSection(name: String, avatarUrl: String?, memberSince: String) {
+fun SellerHeaderSection(
+    name: String, 
+    avatarUrl: String?, 
+    memberSince: String,
+    onChatClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -116,7 +125,7 @@ fun SellerHeaderSection(name: String, avatarUrl: String?, memberSince: String) {
     ) {
         Box(
             modifier = Modifier
-                .size(60.dp)
+                .size(70.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
@@ -132,7 +141,7 @@ fun SellerHeaderSection(name: String, avatarUrl: String?, memberSince: String) {
                 Icon(
                     Icons.Default.Storefront,
                     contentDescription = null,
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(35.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -140,13 +149,25 @@ fun SellerHeaderSection(name: String, avatarUrl: String?, memberSince: String) {
         
         Spacer(modifier = Modifier.width(16.dp))
         
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(text = name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Text(text = "Tham gia từ: $memberSince", fontSize = 12.sp, color = Color.Gray)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                 Icon(Icons.Default.Storefront, null, modifier = Modifier.size(14.dp), tint = Color(0xFF4CAF50))
                 Text(text = " Đang hoạt động", color = Color(0xFF4CAF50), fontSize = 12.sp)
             }
+        }
+
+        // Nút Chat nổi bật trong trang Shop
+        Button(
+            onClick = onChatClick,
+            shape = RoundedCornerShape(24.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.Chat, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Chat", fontWeight = FontWeight.Bold)
         }
     }
 }

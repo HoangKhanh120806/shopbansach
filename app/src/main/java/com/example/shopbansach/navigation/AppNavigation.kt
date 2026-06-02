@@ -16,6 +16,7 @@ import com.example.shopbansach.data.model.UserRole
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.view.*
 import com.example.shopbansach.viewmodel.CartViewModel
+import com.example.shopbansach.viewmodel.ChatViewModel
 import com.example.shopbansach.viewmodel.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 
@@ -29,10 +30,9 @@ fun AppNavigation(
     val authRepository = remember { AuthRepository() }
     val currentUser = FirebaseAuth.getInstance().currentUser
     
-    // Shared ViewModel cho giỏ hàng
     val cartViewModel: CartViewModel = viewModel()
-    // Shared ViewModel cho Home (để dùng chung dữ liệu featuredBooks)
     val homeViewModel: HomeViewModel = viewModel()
+    val chatViewModel: ChatViewModel = viewModel()
     
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -219,6 +219,18 @@ fun AppNavigation(
             
             composable(route = Screen.Notifications.route) {
                 NotificationScreen(navController = navController)
+            }
+
+            composable(
+                route = Screen.Chat.route,
+                arguments = listOf(navArgument("sellerId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val sellerId = backStackEntry.arguments?.getString("sellerId") ?: ""
+                ChatScreen(navController = navController, sellerId = sellerId, viewModel = chatViewModel)
+            }
+
+            composable(route = Screen.ChatList.route) {
+                ChatListScreen(navController = navController, viewModel = chatViewModel)
             }
         }
     }

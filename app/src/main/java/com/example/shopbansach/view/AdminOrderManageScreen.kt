@@ -37,7 +37,7 @@ fun AdminOrderManageScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Xử lý thông báo lỗi và thành công
+    // Sửa lỗi Unresolved reference bằng cách dùng đúng tên biến actionSuccessMessage
     LaunchedEffect(uiState.errorMessage, uiState.actionSuccessMessage) {
         uiState.errorMessage?.let {
             Toast.makeText(context, "Lỗi: $it", Toast.LENGTH_LONG).show()
@@ -63,13 +63,10 @@ fun AdminOrderManageScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Thanh tìm kiếm cho Admin
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChange(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 placeholder = { Text("Tìm theo mã đơn hoặc trạng thái...") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 shape = RoundedCornerShape(12.dp),
@@ -80,19 +77,17 @@ fun AdminOrderManageScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.filteredOrders.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Không tìm thấy đơn hàng nào")
-                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Sử dụng filteredOrders để hỗ trợ tìm kiếm
                     items(uiState.filteredOrders, key = { it.id }) { order ->
                         AdminOrderItemCard(
                             order = order,
+                            // Gọi đúng hàm updateOrderStatus từ ViewModel
                             onStatusChange = { newStatus -> 
                                 viewModel.updateOrderStatus(order.id, newStatus) 
                             }

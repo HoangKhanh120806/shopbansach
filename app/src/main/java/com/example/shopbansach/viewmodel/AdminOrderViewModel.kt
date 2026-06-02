@@ -53,24 +53,21 @@ class AdminOrderViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            // Lấy thông tin đơn hàng để biết khách hàng là ai
             val order = repository.getOrderById(orderId)
-            
             val result = repository.updateOrderStatus(orderId, newStatus)
+            
             if (result.isSuccess) {
-                // TẠO THÔNG BÁO CHO KHÁCH HÀNG
                 if (order != null) {
                     notificationRepository.createNotification(
                         Notification(
                             userId = order.userId,
-                            title = "Đơn hàng cập nhật",
-                            message = "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được Admin cập nhật trạng thái: $newStatus",
+                            title = "Cập nhật đơn hàng",
+                            message = "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được Admin chuyển thành: $newStatus",
                             orderId = orderId
                         )
                     )
                 }
-                
-                _uiState.update { it.copy(actionSuccessMessage = "Đã cập nhật trạng thái thành $newStatus") }
+                _uiState.update { it.copy(actionSuccessMessage = "Đã cập nhật trạng thái đơn hàng", isLoading = false) }
                 loadOrders()
             } else {
                 _uiState.update { it.copy(isLoading = false, errorMessage = result.exceptionOrNull()?.message) }

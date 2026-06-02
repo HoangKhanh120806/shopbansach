@@ -66,4 +66,10 @@ sealed class Screen(val route : String){
     object FeaturedBooks : Screen("featured_books")
     
     object Notifications : Screen("notifications")
+    
+    object Chat : Screen("chat/{sellerId}") {
+        fun createRoute(sellerId: String) = "chat/$sellerId"
+    }
+    
+    object ChatList : Screen("chat_list")
 }

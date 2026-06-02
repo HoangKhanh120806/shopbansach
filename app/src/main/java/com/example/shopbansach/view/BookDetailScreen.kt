@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -167,11 +168,20 @@ fun BookDetailScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        SellerInfoSection(uiState.seller, book) {
-                            if (uiState.seller != null) {
-                                navController.navigate(Screen.SellerShop.createRoute(uiState.seller!!.id))
+                        SellerInfoSection(
+                            seller = uiState.seller, 
+                            book = book,
+                            onVisitShop = {
+                                if (uiState.seller != null) {
+                                    navController.navigate(Screen.SellerShop.createRoute(uiState.seller!!.id))
+                                }
+                            },
+                            onChatClick = {
+                                if (uiState.seller != null) {
+                                    navController.navigate(Screen.Chat.createRoute(uiState.seller!!.id))
+                                }
                             }
-                        }
+                        )
 
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -416,11 +426,14 @@ fun StatItem(label: String, value: String, icon: androidx.compose.ui.graphics.ve
 }
 
 @Composable
-fun SellerInfoSection(seller: User?, book: Book, onVisitShop: () -> Unit) {
+fun SellerInfoSection(
+    seller: User?, 
+    book: Book, 
+    onVisitShop: () -> Unit,
+    onChatClick: () -> Unit
+) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onVisitShop() },
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
@@ -456,17 +469,35 @@ fun SellerInfoSection(seller: User?, book: Book, onVisitShop: () -> Unit) {
                     Text("Người bán uy tín", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
-            Button(
-                onClick = onVisitShop,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                modifier = Modifier.height(32.dp)
-            ) {
-                Text("Xem Shop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            
+            // Các nút hành động
+            Row {
+                IconButton(
+                    onClick = onChatClick,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Chat, 
+                        contentDescription = "Chat", 
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = onVisitShop,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Xem Shop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

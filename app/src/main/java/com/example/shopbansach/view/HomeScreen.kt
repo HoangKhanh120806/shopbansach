@@ -2,18 +2,7 @@ package com.example.shopbansach.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -23,10 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.FirstPage
+import androidx.compose.material.icons.filled.LastPage
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
@@ -62,7 +51,6 @@ fun HomeScreen(
     val notificationUiState by notificationViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
 
-    // Tự động cuộn lên đầu phần "Mới cập nhật" khi chuyển trang
     LaunchedEffect(uiState.currentPage) {
         if (uiState.currentPage > 1 || uiState.newArrivals.isNotEmpty()) {
             listState.animateScrollToItem(2)
@@ -98,7 +86,7 @@ fun HomeScreen(
                     HomeHeader(
                         navController = navController, 
                         currentUser = uiState.currentUser,
-                        unreadNotificationsCount = notificationUiState.unreadCount
+                        unreadCount = notificationUiState.unreadCount
                     ) 
                 }
                 item { StorySlideSection(uiState.featuredBooks.take(5), navController) }
@@ -106,10 +94,7 @@ fun HomeScreen(
                 
                 if (uiState.isNewArrivalsLoading && uiState.newArrivals.isEmpty()) {
                     item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(300.dp), 
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(modifier = Modifier.size(40.dp))
                         }
                     }
@@ -141,7 +126,7 @@ fun HomeScreen(
 fun HomeHeader(
     navController: NavController, 
     currentUser: User?,
-    unreadNotificationsCount: Int
+    unreadCount: Int
 ) {
     Row(
         modifier = Modifier
@@ -170,26 +155,22 @@ fun HomeHeader(
         }
         
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Biểu tượng thông báo với chấm đỏ số lượng
             IconButton(
                 onClick = { navController.navigate(Screen.Notifications.route) },
                 modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
             ) {
                 BadgedBox(
                     badge = {
-                        if (unreadNotificationsCount > 0) {
-                            Badge(
-                                containerColor = Color.Red,
-                                contentColor = Color.White
-                            ) {
-                                Text(unreadNotificationsCount.toString())
+                        if (unreadCount > 0) {
+                            Badge(containerColor = Color.Red, contentColor = Color.White) {
+                                Text(unreadCount.toString())
                             }
                         }
                     }
                 ) {
                     Icon(
                         imageVector = Icons.Default.NotificationsNone, 
-                        contentDescription = "Notifications",
+                        contentDescription = "Thông báo",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -239,7 +220,7 @@ fun PaginationSection(
             enabled = isEnabled && currentPage > 1,
             modifier = Modifier.size(36.dp)
         ) {
-            Icon(Icons.Default.SkipPrevious, contentDescription = "Trang đầu")
+            Icon(Icons.Default.FirstPage, contentDescription = "Trang đầu")
         }
 
         FilledTonalIconButton(
@@ -276,7 +257,7 @@ fun PaginationSection(
             enabled = isEnabled && currentPage < totalPages,
             modifier = Modifier.size(36.dp)
         ) {
-            Icon(Icons.Default.SkipNext, contentDescription = "Trang cuối")
+            Icon(Icons.Default.LastPage, contentDescription = "Trang cuối")
         }
     }
 }
@@ -303,7 +284,7 @@ fun StorySlideSection(books: List<Book>, navController: NavController) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable { 
-                    navController.navigate(Screen.Search.route)
+                    navController.navigate(Screen.FeaturedBooks.route)
                 }
             )
         }
