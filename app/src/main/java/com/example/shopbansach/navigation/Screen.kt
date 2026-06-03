@@ -67,8 +67,9 @@ sealed class Screen(val route : String){
     
     object Notifications : Screen("notifications")
     
-    object Chat : Screen("chat/{sellerId}") {
-        fun createRoute(sellerId: String) = "chat/$sellerId"
+    object Chat : Screen("chat/{sellerId}?bookId={bookId}") {
+        fun createRoute(sellerId: String, bookId: String? = null) = 
+            if (bookId != null) "chat/$sellerId?bookId=$bookId" else "chat/$sellerId"
     }
     
     object ChatList : Screen("chat_list")

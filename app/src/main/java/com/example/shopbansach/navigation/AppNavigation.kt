@@ -223,10 +223,23 @@ fun AppNavigation(
 
             composable(
                 route = Screen.Chat.route,
-                arguments = listOf(navArgument("sellerId") { type = NavType.StringType })
+                arguments = listOf(
+                    navArgument("sellerId") { type = NavType.StringType },
+                    navArgument("bookId") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
             ) { backStackEntry ->
                 val sellerId = backStackEntry.arguments?.getString("sellerId") ?: ""
-                ChatScreen(navController = navController, sellerId = sellerId, viewModel = chatViewModel)
+                val bookId = backStackEntry.arguments?.getString("bookId")
+                ChatScreen(
+                    navController = navController, 
+                    sellerId = sellerId, 
+                    bookId = bookId,
+                    viewModel = chatViewModel
+                )
             }
 
             composable(route = Screen.ChatList.route) {

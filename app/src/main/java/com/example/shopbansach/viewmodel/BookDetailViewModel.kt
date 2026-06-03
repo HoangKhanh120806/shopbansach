@@ -3,9 +3,11 @@ package com.example.shopbansach.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.Review
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import com.example.shopbansach.data.repository.ReviewRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,13 +18,16 @@ data class BookDetailUiState(
     val book: Book? = null,
     val seller: User? = null,
     val relatedBooks: List<Book> = emptyList(),
+    val reviews: List<Review> = emptyList(),
     val isLoading: Boolean = false,
+    val isReviewLoading: Boolean = false,
     val errorMessage: String? = null
 )
 
 class BookDetailViewModel(
     private val repository: FirebaseBookRepository = FirebaseBookRepository(),
-    private val authRepository: AuthRepository = AuthRepository()
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val reviewRepository: ReviewRepository = ReviewRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookDetailUiState())
@@ -34,19 +39,19 @@ class BookDetailViewModel(
             try {
                 val book = repository.getBookById(bookId)
                 if (book != null) {
-                    // Lấy thông tin người bán (Shop)
                     val seller = authRepository.getUserById(book.ownerId)
-                    
-                    // Lấy sách liên quan
                     val allBooks = repository.getAllBooks(limit = 20)
                     val related = allBooks.filter { 
                         it.id != bookId && (it.category == book.category || it.author == book.author)
                     }.take(6)
                     
+                    val reviews = reviewRepository.getReviewsForBook(bookId)
+                    
                     _uiState.update { it.copy(
                         book = book, 
                         seller = seller,
-                        relatedBooks = related, 
+                        relatedBooks = related,
+                        reviews = reviews,
                         isLoading = false
                     ) }
                 } else {
@@ -54,6 +59,36 @@ class BookDetailViewModel(
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun submitReview(bookId: String, rating: Int, comment: String, onComplete: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isReviewLoading = true) }
+            try {
+                val user = authRepository.getCurrentUserData() ?: throw Exception("Bạn cần đăng nhập để đánh giá")
+                val review = Review(
+                    bookId = bookId,
+                    userId = user.id,
+                    userName = user.name,
+                    userAvatarUrl = user.avatarUrl,
+                    rating = rating,
+                    comment = comment
+                )
+                val result = reviewRepository.addReview(review)
+                if (result.isSuccess) {
+                    // Reload reviews
+                    val newReviews = reviewRepository.getReviewsForBook(bookId)
+                    _uiState.update { it.copy(reviews = newReviews, isReviewLoading = false) }
+                    onComplete(Result.success(Unit))
+                } else {
+                    _uiState.update { it.copy(isReviewLoading = false) }
+                    onComplete(Result.failure(result.exceptionOrNull() ?: Exception("Lỗi không xác định")))
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isReviewLoading = false) }
+                onComplete(Result.failure(e))
             }
         }
     }

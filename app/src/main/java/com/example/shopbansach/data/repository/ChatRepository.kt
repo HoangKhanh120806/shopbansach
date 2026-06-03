@@ -17,9 +17,9 @@ class ChatRepository {
     private val chatRoomsCollection = firestore.collection("chatRooms")
 
     /**
-     * Lấy hoặc tạo một phòng chat giữa 2 người
+     * Lấy hoặc tạo một phòng chat giữa 2 người và đính kèm sản phẩm đang quan tâm
      */
-    suspend fun getOrCreateChatRoom(user1: User, user2: User): String {
+    suspend fun getOrCreateChatRoom(user1: User, user2: User, bookId: String? = null): String {
         val participants = listOf(user1.id, user2.id).sorted()
         val roomId = participants.joinToString("_")
 
@@ -29,16 +29,17 @@ class ChatRepository {
                 id = roomId,
                 participantIds = participants,
                 participantNames = mapOf(user1.id to user1.name, user2.id to user2.name),
-                participantAvatars = mapOf(user1.id to user1.avatarUrl, user2.id to user2.avatarUrl)
+                participantAvatars = mapOf(user1.id to user1.avatarUrl, user2.id to user2.avatarUrl),
+                lastBookId = bookId
             )
             chatRoomsCollection.document(roomId).set(chatRoom).await()
+        } else if (bookId != null) {
+            // Cập nhật sản phẩm quan tâm mới nhất nếu có
+            chatRoomsCollection.document(roomId).update("lastBookId", bookId).await()
         }
         return roomId
     }
 
-    /**
-     * Gửi tin nhắn
-     */
     suspend fun sendMessage(roomId: String, senderId: String, receiverId: String, message: String): Result<Unit> {
         return try {
             val messageId = firestore.collection("chatRooms").document(roomId)
@@ -53,12 +54,9 @@ class ChatRepository {
             )
 
             val batch = firestore.batch()
-            
-            // 1. Thêm tin nhắn vào sub-collection
             val msgRef = chatRoomsCollection.document(roomId).collection("messages").document(messageId)
             batch.set(msgRef, chatMessage)
             
-            // 2. Cập nhật tin nhắn cuối cùng của phòng chat
             batch.update(chatRoomsCollection.document(roomId), mapOf(
                 "lastMessage" to message,
                 "lastMessageTimestamp" to chatMessage.timestamp
@@ -71,9 +69,6 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Lắng nghe tin nhắn trong phòng chat theo thời gian thực
-     */
     fun getMessagesFlow(roomId: String): Flow<List<ChatMessage>> = callbackFlow {
         val registration = chatRoomsCollection.document(roomId)
             .collection("messages")
@@ -90,9 +85,6 @@ class ChatRepository {
         awaitClose { registration.remove() }
     }
 
-    /**
-     * Lấy danh sách các phòng chat của người dùng hiện tại
-     */
     fun getChatRoomsFlow(userId: String): Flow<List<ChatRoom>> = callbackFlow {
         val registration = chatRoomsCollection
             .whereArrayContains("participantIds", userId)

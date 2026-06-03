@@ -15,10 +15,12 @@ data class ChatRoom(
     @get:PropertyName("lastMessageTimestamp") @set:PropertyName("lastMessageTimestamp")
     var lastMessageTimestamp: Long = System.currentTimeMillis(),
     
-    // Lưu tên và ảnh để hiển thị danh sách nhanh hơn
     @get:PropertyName("participantNames") @set:PropertyName("participantNames")
     var participantNames: Map<String, String> = emptyMap(),
     
     @get:PropertyName("participantAvatars") @set:PropertyName("participantAvatars")
-    var participantAvatars: Map<String, String?> = emptyMap()
+    var participantAvatars: Map<String, String?> = emptyMap(),
+    
+    @get:PropertyName("lastBookId") @set:PropertyName("lastBookId")
+    var lastBookId: String? = null // Lưu ID sách khách đang quan tâm
 )

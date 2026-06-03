@@ -19,12 +19,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.ChatMessage
+import com.example.shopbansach.utils.CurrencyUtils
 import com.example.shopbansach.viewmodel.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
@@ -35,6 +38,7 @@ import java.util.*
 fun ChatScreen(
     navController: NavController,
     sellerId: String,
+    bookId: String? = null, // Nhận thêm bookId từ Navigation
     viewModel: ChatViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -43,8 +47,8 @@ fun ChatScreen(
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(sellerId) {
-        viewModel.startChatWithUser(sellerId)
+    LaunchedEffect(sellerId, bookId) {
+        viewModel.startChatWithUser(sellerId, bookId)
     }
 
     // Tự động cuộn xuống tin nhắn mới nhất
@@ -54,7 +58,6 @@ fun ChatScreen(
         }
     }
 
-    // Hiển thị Toast nếu có lỗi
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
             Toast.makeText(context, "Lỗi Chat: $it", Toast.LENGTH_LONG).show()
@@ -125,28 +128,52 @@ fun ChatScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (uiState.isLoading && uiState.messages.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.errorMessage != null && uiState.messages.isEmpty()) {
-                // Hiển thị lỗi ngay trên màn hình nếu không tải được tin nhắn
-                Text(
-                    text = uiState.errorMessage!!,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp)
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // HIỂN THỊ SẢN PHẨM ĐANG QUAN TÂM
+            uiState.selectedBook?.let { book ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    items(uiState.messages) { message ->
-                        MessageBubble(
-                            message = message,
-                            isMine = message.senderId == currentUserId
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = book.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp, 70.dp).clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Bạn đang quan tâm sản phẩm này:", fontSize = 11.sp, color = Color.Gray)
+                            Text(text = book.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(text = CurrencyUtils.formatPrice(book.price), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                if (uiState.isLoading && uiState.messages.isEmpty()) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.messages) { message ->
+                            MessageBubble(
+                                message = message,
+                                isMine = message.senderId == currentUserId
+                            )
+                        }
                     }
                 }
             }

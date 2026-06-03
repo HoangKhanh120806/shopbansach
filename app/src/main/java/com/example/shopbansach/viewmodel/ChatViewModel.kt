@@ -2,11 +2,13 @@ package com.example.shopbansach.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.ChatMessage
 import com.example.shopbansach.data.model.ChatRoom
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.ChatRepository
+import com.example.shopbansach.data.repository.FirebaseBookRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,12 +23,14 @@ data class ChatUiState(
     val isLoading: Boolean = false,
     val currentRoomId: String? = null,
     val otherUser: User? = null,
+    val selectedBook: Book? = null, // Sách người dùng đang quan tâm
     val errorMessage: String? = null
 )
 
 class ChatViewModel(
     private val repository: ChatRepository = ChatRepository(),
-    private val authRepository: AuthRepository = AuthRepository()
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -45,16 +49,22 @@ class ChatViewModel(
         }
     }
 
-    fun startChatWithUser(sellerId: String) {
+    fun startChatWithUser(sellerId: String, bookId: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // 1. Lấy thông tin người bán trước để hiện lên Header ngay
+                // 1. Lấy thông tin người bán
                 val sellerData = authRepository.getUserById(sellerId)
+                
+                // 2. Nếu có bookId, lấy thông tin sách
+                val bookData = if (!bookId.isNullOrEmpty()) {
+                    bookRepository.getBookById(bookId)
+                } else null
+
                 if (sellerData != null) {
-                    _uiState.update { it.copy(otherUser = sellerData) }
+                    _uiState.update { it.copy(otherUser = sellerData, selectedBook = bookData) }
                     
-                    // 2. Sau đó mới lấy/tạo phòng chat
+                    // 3. Lấy/Tạo phòng chat
                     val currentUserData = authRepository.getCurrentUserData()
                     if (currentUserData != null) {
                         val roomId = repository.getOrCreateChatRoom(currentUserData, sellerData)

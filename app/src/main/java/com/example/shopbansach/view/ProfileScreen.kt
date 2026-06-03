@@ -162,25 +162,21 @@ fun ProfileScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column {
-                            // TIN NHẮN
                             ProfileMenuItem(icon = Icons.Default.Chat, title = "Tin nhắn của tôi", onClick = { navController.navigate(Screen.ChatList.route) })
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
 
-                            // LỊCH SỬ ĐƠN HÀNG
                             ProfileMenuItem(icon = Icons.Default.History, title = "Lịch sử đơn hàng", onClick = { navController.navigate(Screen.OrderHistory.route) })
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
 
-                            // CÀI ĐẶT TÀI KHOẢN
                             ProfileMenuItem(icon = Icons.Default.Settings, title = "Cài đặt tài khoản", onClick = { navController.navigate(Screen.Settings.route) })
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
 
-                            // ĐĂNG KÝ BÁN HÀNG / QUẢN LÝ SHOP (Vị trí cạnh Cài đặt tài khoản)
                             when (user.role) {
                                 UserRole.SELLER, UserRole.ADMIN -> {
                                     ProfileMenuItem(icon = Icons.Default.AddBusiness, title = "Quản lý Shop của tôi", titleColor = MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(Screen.MyShop.route) })
                                 }
                                 UserRole.PENDING_SELLER -> {
-                                    ProfileMenuItem(icon = Icons.Default.HourglassEmpty, title = "Yêu cầu bán hàng đang chờ duyệt", titleColor = MaterialTheme.colorScheme.secondary, onClick = { Toast.makeText(context, "Vui lòng chờ Admin phê duyệt", Toast.LENGTH_SHORT).show() })
+                                    ProfileMenuItem(icon = Icons.Default.HourglassEmpty, title = "Yêu cầu đang chờ duyệt", titleColor = MaterialTheme.colorScheme.secondary, onClick = { Toast.makeText(context, "Vui lòng chờ Admin phê duyệt", Toast.LENGTH_SHORT).show() })
                                 }
                                 else -> {
                                     ProfileMenuItem(icon = Icons.Default.AddBusiness, title = "Đăng ký bán hàng ngay", titleColor = MaterialTheme.colorScheme.tertiary, onClick = { showRegisterSellerDialog = true })
@@ -189,7 +185,6 @@ fun ProfileScreen(
                             
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
                             
-                            // CHẾ ĐỘ TỐI
                             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.NightlightRound, null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(16.dp))
@@ -198,7 +193,6 @@ fun ProfileScreen(
                             }
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
                             
-                            // ĐĂNG XUẤT
                             ProfileMenuItem(icon = Icons.AutoMirrored.Filled.ExitToApp, title = "Đăng xuất", titleColor = Color.Red, onClick = { authRepository.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } })
                         }
                     }

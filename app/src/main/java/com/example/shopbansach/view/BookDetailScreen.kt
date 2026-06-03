@@ -36,6 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.shopbansach.data.model.Book
+import com.example.shopbansach.data.model.Review
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.utils.CurrencyUtils
@@ -44,6 +45,8 @@ import com.example.shopbansach.utils.PrimaryButton
 import com.example.shopbansach.viewmodel.BookDetailViewModel
 import com.example.shopbansach.viewmodel.CartActionState
 import com.example.shopbansach.viewmodel.CartViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +63,7 @@ fun BookDetailScreen(
 
     var showQuantitySheet by remember { mutableStateOf(false) }
     var selectedQuantity by remember { mutableIntStateOf(1) }
+    var showReviewDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(bookId) {
         viewModel.getBookDetail(bookId)
@@ -172,13 +176,13 @@ fun BookDetailScreen(
                             seller = uiState.seller, 
                             book = book,
                             onVisitShop = {
-                                if (uiState.seller != null) {
-                                    navController.navigate(Screen.SellerShop.createRoute(uiState.seller!!.id))
+                                uiState.seller?.let {
+                                    navController.navigate(Screen.SellerShop.createRoute(it.id))
                                 }
                             },
                             onChatClick = {
-                                if (uiState.seller != null) {
-                                    navController.navigate(Screen.Chat.createRoute(uiState.seller!!.id))
+                                uiState.seller?.let {
+                                    navController.navigate(Screen.Chat.createRoute(it.id, book.id))
                                 }
                             }
                         )
@@ -217,6 +221,13 @@ fun BookDetailScreen(
                             lineHeight = 24.sp,
                             textAlign = TextAlign.Justify
                         )
+
+                        // MỤC ĐÁNH GIÁ SẢN PHẨM
+                        Spacer(modifier = Modifier.height(32.dp))
+                        ReviewSection(
+                            reviews = uiState.reviews,
+                            onAddReviewClick = { showReviewDialog = true }
+                        )
                         
                         if (uiState.relatedBooks.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(32.dp))
@@ -246,6 +257,23 @@ fun BookDetailScreen(
         }
     }
 
+    if (showReviewDialog) {
+        AddReviewDialog(
+            onDismiss = { showReviewDialog = false },
+            onSubmit = { rating, comment ->
+                viewModel.submitReview(bookId, rating, comment) { result ->
+                    if (result.isSuccess) {
+                        Toast.makeText(context, "Cảm ơn bạn đã đánh giá!", Toast.LENGTH_SHORT).show()
+                        showReviewDialog = false
+                    } else {
+                        Toast.makeText(context, "Lỗi: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            isSubmitting = uiState.isReviewLoading
+        )
+    }
+
     if (showQuantitySheet && uiState.book != null) {
         val book = uiState.book!!
         ModalBottomSheet(
@@ -264,6 +292,131 @@ fun BookDetailScreen(
             )
         }
     }
+}
+
+@Composable
+fun ReviewSection(
+    reviews: List<Review>,
+    onAddReviewClick: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Đánh giá từ độc giả",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.primary
+            )
+            TextButton(onClick = onAddReviewClick) {
+                Text("Viết đánh giá")
+            }
+        }
+        
+        if (reviews.isEmpty()) {
+            Text(
+                text = "Chưa có đánh giá nào cho cuốn sách này.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        } else {
+            reviews.forEach { review ->
+                ReviewItem(review)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+            }
+        }
+    }
+}
+
+@Composable
+fun ReviewItem(review: Review) {
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                if (!review.userAvatarUrl.isNullOrEmpty()) {
+                    AsyncImage(model = review.userAvatarUrl, contentDescription = null, contentScale = ContentScale.Crop)
+                } else {
+                    Icon(Icons.Default.Person, null, modifier = Modifier.size(20.dp).align(Alignment.Center), tint = Color.Gray)
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(text = review.userName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(text = sdf.format(Date(review.createdAt)), fontSize = 11.sp, color = Color.Gray)
+            }
+        }
+        Row(modifier = Modifier.padding(vertical = 4.dp)) {
+            repeat(5) { index ->
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = if (index < review.rating) Color(0xFFFFB300) else Color.LightGray
+                )
+            }
+        }
+        Text(text = review.comment, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
+fun AddReviewDialog(
+    onDismiss: () -> Unit,
+    onSubmit: (Int, String) -> Unit,
+    isSubmitting: Boolean
+) {
+    var rating by remember { mutableIntStateOf(5) }
+    var comment by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Đánh giá sản phẩm") },
+        text = {
+            Column {
+                Text("Bạn cảm nhận thế nào về cuốn sách?")
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    repeat(5) { index ->
+                        IconButton(onClick = { rating = index + 1 }) {
+                            Icon(
+                                imageVector = if (index < rating) Icons.Default.Star else Icons.Default.StarOutline,
+                                contentDescription = null,
+                                tint = if (index < rating) Color(0xFFFFB300) else Color.Gray,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text("Nhận xét của bạn") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    placeholder = { Text("Cuốn sách này rất...") }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmit(rating, comment) },
+                enabled = !isSubmitting && comment.isNotBlank()
+            ) {
+                if (isSubmitting) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                else Text("Gửi")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Hủy") }
+        }
+    )
 }
 
 @Composable
@@ -470,8 +623,8 @@ fun SellerInfoSection(
                 }
             }
             
-            // Các nút hành động
             Row {
+                // Nút Chat
                 IconButton(
                     onClick = onChatClick,
                     modifier = Modifier
@@ -486,6 +639,7 @@ fun SellerInfoSection(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
+                // Nút Xem Shop
                 Button(
                     onClick = onVisitShop,
                     colors = ButtonDefaults.buttonColors(
