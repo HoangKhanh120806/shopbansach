@@ -17,10 +17,18 @@ import com.example.shopbansach.utils.NotificationHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 
 class MainActivity : ComponentActivity() {
     
     private lateinit var notificationHelper: NotificationHelper
+    private var authStateListener: FirebaseAuth.AuthStateListener? = null
+    private var notificationListener: ListenerRegistration? = null
+    private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
+    
+    // Lưu thời điểm app bắt đầu chạy để tránh hiện thông báo cũ
+    private val startTime = System.currentTimeMillis()
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -61,30 +69,42 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setupNotificationListener() {
-        val auth = FirebaseAuth.getInstance()
-        val firestore = FirebaseFirestore.getInstance()
-
-        auth.addAuthStateListener { firebaseAuth ->
+        authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             val userId = firebaseAuth.currentUser?.uid
+            
+            // Gỡ bỏ listener cũ nếu có (khi user logout/login lại)
+            notificationListener?.remove()
+            
             if (userId != null) {
-                // Lắng nghe các thông báo CHƯA ĐỌC dành riêng cho user này
-                firestore.collection("notifications")
+                notificationListener = firestore.collection("notifications")
                     .whereEqualTo("userId", userId)
                     .whereEqualTo("isRead", false)
                     .addSnapshotListener { snapshots, e ->
                         if (e != null) return@addSnapshotListener
 
                         for (dc in snapshots?.documentChanges ?: emptyList()) {
-                            // dc.type == ADDED sẽ bắt cả thông báo cũ chưa đọc khi vừa mở app
-                            // và thông báo mới tinh vừa được tạo ra
                             if (dc.type == DocumentChange.Type.ADDED) {
-                                val title = dc.document.getString("title") ?: "Thông báo mới"
-                                val message = dc.document.getString("message") ?: ""
-                                notificationHelper.showNotification(title, message)
+                                val timestamp = dc.document.getLong("createdAt") ?: 0L
+                                
+                                // Chỉ hiện thông báo nếu nó mới được tạo (sau khi app mở)
+                                // Hoặc bạn có thể bỏ check startTime nếu muốn hiện cả thông báo cũ chưa đọc
+                                if (timestamp > startTime || timestamp == 0L) {
+                                    val title = dc.document.getString("title") ?: "Thông báo mới"
+                                    val message = dc.document.getString("message") ?: ""
+                                    notificationHelper.showNotification(title, message)
+                                }
                             }
                         }
                     }
             }
         }
+        auth.addAuthStateListener(authStateListener!!)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Giải phóng tài nguyên để tránh rò rỉ bộ nhớ
+        authStateListener?.let { auth.removeAuthStateListener(it) }
+        notificationListener?.remove()
     }
 }

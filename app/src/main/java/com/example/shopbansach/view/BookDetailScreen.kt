@@ -96,12 +96,16 @@ fun BookDetailScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { /* Wishlist */ },
+                        onClick = { viewModel.toggleWishlist(bookId) },
                         modifier = Modifier
                             .padding(8.dp)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape)
                     ) {
-                        Icon(Icons.Default.FavoriteBorder, contentDescription = "Wishlist")
+                        Icon(
+                            imageVector = if (uiState.isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder, 
+                            contentDescription = "Wishlist",
+                            tint = if (uiState.isWishlisted) Color.Red else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -193,7 +197,12 @@ fun BookDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            StatItem(label = "Đánh giá", value = "${book.rating}", icon = Icons.Default.Star, iconColor = Color(0xFFFFB300))
+                            StatItem(
+                                label = "Đánh giá", 
+                                value = if (book.rating > 0) "${book.rating}" else "Chưa có", 
+                                icon = Icons.Default.Star, 
+                                iconColor = Color(0xFFFFB300)
+                            )
                             StatItem(label = "Số trang", value = "${book.pages}", icon = Icons.Default.MenuBook) 
                             StatItem(
                                 label = "Tồn kho", 
@@ -226,6 +235,7 @@ fun BookDetailScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                         ReviewSection(
                             reviews = uiState.reviews,
+                            canReview = uiState.canReview,
                             onAddReviewClick = { showReviewDialog = true }
                         )
                         
@@ -297,6 +307,7 @@ fun BookDetailScreen(
 @Composable
 fun ReviewSection(
     reviews: List<Review>,
+    canReview: Boolean,
     onAddReviewClick: () -> Unit
 ) {
     Column {
@@ -313,14 +324,26 @@ fun ReviewSection(
                 ),
                 color = MaterialTheme.colorScheme.primary
             )
-            TextButton(onClick = onAddReviewClick) {
-                Text("Viết đánh giá")
+            
+            if (canReview) {
+                TextButton(onClick = onAddReviewClick) {
+                    Text("Viết đánh giá")
+                }
             }
+        }
+        
+        if (!canReview) {
+            Text(
+                text = "Bạn chỉ có thể đánh giá sau khi đã mua sách này.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
         }
         
         if (reviews.isEmpty()) {
             Text(
-                text = "Chưa có đánh giá nào cho cuốn sách này.",
+                text = "Chưa có đánh giá",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 modifier = Modifier.padding(vertical = 16.dp)

@@ -73,4 +73,6 @@ sealed class Screen(val route : String){
     }
     
     object ChatList : Screen("chat_list")
+
+    object Wishlist : Screen("wishlist")
 }

@@ -44,12 +44,23 @@ class CartViewModel(
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    
+    private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        if (firebaseAuth.currentUser != null) {
+            loadCartItems()
+        } else {
+            _uiState.update { CartUiState() }
+        }
+    }
 
     init {
-        auth.addAuthStateListener { firebaseAuth ->
-            if (firebaseAuth.currentUser != null) loadCartItems()
-            else _uiState.update { CartUiState() }
-        }
+        auth.addAuthStateListener(authStateListener)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Quan trọng: Gỡ bỏ listener khi ViewModel không còn được sử dụng
+        auth.removeAuthStateListener(authStateListener)
     }
 
     fun loadCartItems() {
@@ -105,7 +116,7 @@ class CartViewModel(
                 _uiState.update { it.copy(actionState = CartActionState.Success) }
                 loadCartItems()
             } else {
-                _uiState.update { it.copy(actionState = CartActionState.Error("Lỗi giỏ hàng")) }
+                _uiState.update { it.copy(actionState = CartActionState.Error("Lỗi thêm vào giỏ hàng")) }
             }
         }
     }
@@ -201,7 +212,6 @@ class CartViewModel(
                 }.await()
 
                 // THÔNG BÁO CHO SELLER VÀ BUYER
-                // 1. Thông báo cho người mua
                 notificationRepository.createNotification(
                     Notification(
                         userId = currentUserId,
@@ -211,7 +221,6 @@ class CartViewModel(
                     )
                 )
 
-                // 2. Thông báo cho từng người bán
                 val uniqueSellers = checkoutItems.map { it.ownerId }.distinct()
                 uniqueSellers.forEach { sellerId ->
                     if (sellerId.isNotEmpty()) {

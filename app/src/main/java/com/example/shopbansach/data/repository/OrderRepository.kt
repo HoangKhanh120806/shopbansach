@@ -47,6 +47,24 @@ class OrderRepository {
             snapshot.toObjects(Order::class.java).sortedByDescending { it.createdAt }
         }
     }
+    
+    /**
+     * Kiểm tra xem user đã từng mua cuốn sách này chưa
+     */
+    suspend fun hasUserPurchasedBook(userId: String, bookId: String): Boolean {
+        return try {
+            // Lấy tất cả đơn hàng của user này
+            val orders = getOrdersByUser(userId)
+            // Kiểm tra xem có đơn hàng nào chứa bookId này không
+            // Thông thường nên check status là "Hoàn thành" hoặc "Đã giao hàng"
+            orders.any { order -> 
+                order.items.any { it.bookId == bookId } 
+                // && (order.status == "Hoàn thành" || order.status == "Đã giao hàng") 
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     /**
      * Lấy đơn hàng cho Seller - Tối ưu hóa truy vấn

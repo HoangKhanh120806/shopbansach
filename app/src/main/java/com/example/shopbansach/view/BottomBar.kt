@@ -2,6 +2,7 @@ package com.example.shopbansach.view
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -42,6 +43,20 @@ fun BottomBar(
             onClick = { onNavigate(Screen.Search.route) },
             icon = { Icon(Icons.Default.Search, contentDescription = "Tìm kiếm") },
             label = { Text("Tìm kiếm") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+
+        NavigationBarItem(
+            selected = currentRoute == Screen.Wishlist.route,
+            onClick = { onNavigate(Screen.Wishlist.route) },
+            icon = { Icon(Icons.Default.Favorite, contentDescription = "Yêu thích") },
+            label = { Text("Yêu thích") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
                 selectedTextColor = MaterialTheme.colorScheme.primary,

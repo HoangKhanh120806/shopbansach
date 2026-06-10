@@ -7,7 +7,10 @@ import com.example.shopbansach.data.model.Review
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import com.example.shopbansach.data.repository.OrderRepository
 import com.example.shopbansach.data.repository.ReviewRepository
+import com.example.shopbansach.data.repository.WishlistRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,17 +24,22 @@ data class BookDetailUiState(
     val reviews: List<Review> = emptyList(),
     val isLoading: Boolean = false,
     val isReviewLoading: Boolean = false,
+    val canReview: Boolean = false,
+    val isWishlisted: Boolean = false,
     val errorMessage: String? = null
 )
 
 class BookDetailViewModel(
     private val repository: FirebaseBookRepository = FirebaseBookRepository(),
     private val authRepository: AuthRepository = AuthRepository(),
-    private val reviewRepository: ReviewRepository = ReviewRepository()
+    private val reviewRepository: ReviewRepository = ReviewRepository(),
+    private val orderRepository: OrderRepository = OrderRepository(),
+    private val wishlistRepository: WishlistRepository = WishlistRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookDetailUiState())
     val uiState: StateFlow<BookDetailUiState> = _uiState.asStateFlow()
+    private val auth = FirebaseAuth.getInstance()
 
     fun getBookDetail(bookId: String) {
         viewModelScope.launch {
@@ -47,11 +55,26 @@ class BookDetailViewModel(
                     
                     val reviews = reviewRepository.getReviewsForBook(bookId)
                     
+                    val currentUserId = auth.currentUser?.uid
+                    val canReview = if (currentUserId != null) {
+                        orderRepository.hasUserPurchasedBook(currentUserId, bookId)
+                    } else {
+                        false
+                    }
+
+                    val isWishlisted = if (currentUserId != null) {
+                        wishlistRepository.isBookWishlisted(bookId)
+                    } else {
+                        false
+                    }
+                    
                     _uiState.update { it.copy(
                         book = book, 
                         seller = seller,
                         relatedBooks = related,
                         reviews = reviews,
+                        canReview = canReview,
+                        isWishlisted = isWishlisted,
                         isLoading = false
                     ) }
                 } else {
@@ -63,11 +86,24 @@ class BookDetailViewModel(
         }
     }
 
+    fun toggleWishlist(bookId: String) {
+        viewModelScope.launch {
+            val result = wishlistRepository.toggleWishlist(bookId)
+            if (result.isSuccess) {
+                _uiState.update { it.copy(isWishlisted = result.getOrDefault(false)) }
+            }
+        }
+    }
+
     fun submitReview(bookId: String, rating: Int, comment: String, onComplete: (Result<Unit>) -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(isReviewLoading = true) }
             try {
                 val user = authRepository.getCurrentUserData() ?: throw Exception("Bạn cần đăng nhập để đánh giá")
+                
+                val hasPurchased = orderRepository.hasUserPurchasedBook(user.id, bookId)
+                if (!hasPurchased) throw Exception("Bạn chỉ có thể đánh giá sau khi đã mua sách này")
+
                 val review = Review(
                     bookId = bookId,
                     userId = user.id,
@@ -78,9 +114,14 @@ class BookDetailViewModel(
                 )
                 val result = reviewRepository.addReview(review)
                 if (result.isSuccess) {
-                    // Reload reviews
                     val newReviews = reviewRepository.getReviewsForBook(bookId)
-                    _uiState.update { it.copy(reviews = newReviews, isReviewLoading = false) }
+                    val updatedBook = repository.getBookById(bookId)
+                    
+                    _uiState.update { it.copy(
+                        book = updatedBook,
+                        reviews = newReviews, 
+                        isReviewLoading = false
+                    ) }
                     onComplete(Result.success(Unit))
                 } else {
                     _uiState.update { it.copy(isReviewLoading = false) }

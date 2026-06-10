@@ -18,6 +18,7 @@ import com.example.shopbansach.view.*
 import com.example.shopbansach.viewmodel.CartViewModel
 import com.example.shopbansach.viewmodel.ChatViewModel
 import com.example.shopbansach.viewmodel.HomeViewModel
+import com.example.shopbansach.viewmodel.WishlistViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -33,6 +34,7 @@ fun AppNavigation(
     val cartViewModel: CartViewModel = viewModel()
     val homeViewModel: HomeViewModel = viewModel()
     val chatViewModel: ChatViewModel = viewModel()
+    val wishlistViewModel: WishlistViewModel = viewModel()
     
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -79,6 +81,10 @@ fun AppNavigation(
 
             composable(route = Screen.Search.route) {
                 SearchScreen(navController = navController)
+            }
+
+            composable(route = Screen.Wishlist.route) {
+                WishlistScreen(navController = navController, viewModel = wishlistViewModel)
             }
 
             composable(route = Screen.Cart.route) {

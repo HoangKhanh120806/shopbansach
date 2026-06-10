@@ -348,6 +348,16 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
             )
         }
 
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+            Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(12.dp))
+            Text(
+                text = if (book.rating > 0) " ${book.rating}" else " Chưa có", 
+                fontSize = 11.sp, 
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
+        }
+
         Text(
             text = CurrencyUtils.formatPrice(book.price),
             fontSize = 13.sp,
@@ -434,7 +444,7 @@ fun NewArrivalItem(book: Book, navController: NavController) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
                     Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(14.dp))
                     Text(
-                        text = " ${book.rating}", 
+                        text = if (book.rating > 0) " ${book.rating}" else " Chưa có",
                         fontSize = 12.sp, 
                         fontWeight = FontWeight.Bold,
                         color = Color.Gray
