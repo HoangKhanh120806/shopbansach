@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.shopbansach.navigation.AppNavigation
 import com.example.shopbansach.ui.theme.ShopbansachTheme
 import com.example.shopbansach.utils.NotificationHelper
@@ -39,6 +40,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Cài đặt Splash Screen TRƯỚC super.onCreate()
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
         
         notificationHelper = NotificationHelper(this)

@@ -86,7 +86,7 @@ fun AdminHomeScreen(navController: NavController) {
                 AdminFunction("Quản lý Sách", Icons.Default.Book, Color(0xFF4CAF50), Screen.AdminBookManage.route),
                 AdminFunction("Quản lý Người dùng", Icons.Default.People, Color(0xFF2196F3), Screen.AdminUserManage.route),
                 AdminFunction("Quản lý Đơn hàng", Icons.Default.ShoppingBag, Color(0xFFFF9800), Screen.AdminOrderManage.route),
-                AdminFunction("Thống kê", Icons.Default.Dashboard, Color(0xFF9C27B0), "")
+                AdminFunction("Thống kê", Icons.Default.Dashboard, Color(0xFF9C27B0), Screen.AdminStatistics.route)
             )
 
             LazyVerticalGrid(

@@ -65,6 +65,7 @@ class SellerOrderViewModel(
                         userId = order.userId,
                         title = "Cập nhật đơn hàng",
                         message = "Đơn hàng #${orderId.takeLast(6).uppercase()} của bạn đã chuyển sang trạng thái: $newStatus",
+                        type = "ORDER",
                         orderId = orderId
                     )
                     notificationRepository.createNotification(notification)

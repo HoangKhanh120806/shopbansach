@@ -6,10 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shopbansach.data.model.Notification
+import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -72,7 +74,19 @@ fun NotificationScreen(
                 items(uiState.notifications) { notification ->
                     NotificationItem(notification) {
                         viewModel.markAsRead(notification.id)
-                        // TODO: Navigate to Order Detail if needed
+                        
+                        // Xử lý điều hướng dựa trên loại thông báo
+                        when (notification.type) {
+                            "ORDER" -> {
+                                navController.navigate(Screen.OrderHistory.route)
+                            }
+                            "CHAT" -> {
+                                navController.navigate(Screen.ChatList.route)
+                            }
+                            else -> {
+                                // Mặc định không làm gì hoặc chuyển đến trang chủ
+                            }
+                        }
                     }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
                 }
@@ -85,10 +99,17 @@ fun NotificationScreen(
 fun NotificationItem(notification: Notification, onClick: () -> Unit) {
     val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     
+    // Chọn icon và màu sắc dựa trên type
+    val (icon, iconColor) = when (notification.type) {
+        "CHAT" -> Icons.AutoMirrored.Filled.Chat to Color(0xFF2196F3)
+        "ORDER" -> Icons.Default.ShoppingBag to Color(0xFFFF9800)
+        else -> Icons.Default.Notifications to MaterialTheme.colorScheme.primary
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (notification.isRead) Color.Transparent else MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+            .background(if (notification.isRead) Color.Transparent else iconColor.copy(alpha = 0.05f))
             .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -97,26 +118,47 @@ fun NotificationItem(notification: Notification, onClick: () -> Unit) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(if (notification.isRead) Color.Gray.copy(alpha = 0.1f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                .background(if (notification.isRead) Color.Gray.copy(alpha = 0.1f) else iconColor.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.Notifications, 
-                null, 
-                tint = if (notification.isRead) Color.Gray else MaterialTheme.colorScheme.primary
+                imageVector = icon, 
+                contentDescription = null, 
+                tint = if (notification.isRead) Color.Gray else iconColor
             )
         }
         
         Spacer(modifier = Modifier.width(16.dp))
         
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = notification.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(text = notification.message, fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(vertical = 4.dp))
-            Text(text = sdf.format(Date(notification.createdAt)), fontSize = 11.sp, color = Color.LightGray)
+            Text(
+                text = notification.title, 
+                fontWeight = if (notification.isRead) FontWeight.Medium else FontWeight.Bold, 
+                fontSize = 15.sp,
+                color = if (notification.isRead) Color.Gray else Color.Black
+            )
+            Text(
+                text = notification.message, 
+                fontSize = 13.sp, 
+                color = if (notification.isRead) Color.Gray else Color.DarkGray, 
+                modifier = Modifier.padding(vertical = 4.dp),
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                text = sdf.format(Date(notification.createdAt)), 
+                fontSize = 11.sp, 
+                color = Color.LightGray
+            )
         }
         
         if (!notification.isRead) {
-            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(iconColor)
+            )
         }
     }
 }

@@ -14,9 +14,16 @@ import kotlinx.coroutines.launch
 
 data class SearchUiState(
     val searchResults: List<Book> = emptyList(),
+    val filteredResults: List<Book> = emptyList(),
     val suggestions: List<Book> = emptyList(),
     val isLoading: Boolean = false,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    // Filter states
+    val selectedCategory: String = "Tất cả",
+    val minPrice: Long? = null,
+    val maxPrice: Long? = null,
+    val minRating: Int = 0,
+    val categories: List<String> = listOf("Tất cả", "Văn học", "Kinh tế", "Kỹ năng sống", "Thiếu nhi", "Tiểu thuyết", "Sách giáo khoa")
 )
 
 class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseBookRepository()) : ViewModel() {
@@ -33,7 +40,6 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
     private fun loadSuggestions() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            // Chỉ lấy 3 sách gợi ý đầu tiên
             val suggestions = repository.getFeaturedBooks().take(3)
             _uiState.update { it.copy(suggestions = suggestions, isLoading = false) }
         }
@@ -44,8 +50,8 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
         
         searchJob?.cancel()
         
-        if (query.isEmpty()) {
-            _uiState.update { it.copy(searchResults = emptyList(), isLoading = false) }
+        if (query.isEmpty() && _uiState.value.selectedCategory == "Tất cả") {
+            _uiState.update { it.copy(searchResults = emptyList(), filteredResults = emptyList(), isLoading = false) }
         } else {
             searchJob = viewModelScope.launch {
                 delay(500)
@@ -56,18 +62,59 @@ class SearchViewModel(private val repository: FirebaseBookRepository = FirebaseB
 
     private suspend fun searchBooks(query: String) {
         _uiState.update { it.copy(isLoading = true) }
-        val results = repository.searchBooks(query)
-        _uiState.update { it.copy(searchResults = results, isLoading = false) }
+        val results = if (query.isEmpty() && _uiState.value.selectedCategory != "Tất cả") {
+             repository.getBooksByCategory(_uiState.value.selectedCategory)
+        } else {
+            repository.searchBooks(query)
+        }
+        _uiState.update { 
+            it.copy(
+                searchResults = results, 
+                isLoading = false 
+            ) 
+        }
+        applyFilters()
     }
 
-    // TÍNH NĂNG MỚI: Tìm kiếm theo thể loại
-    fun searchByCategory(category: String) {
-        _uiState.update { it.copy(searchQuery = category, isLoading = true) }
+    fun updateCategory(category: String) {
+        _uiState.update { it.copy(selectedCategory = category) }
         viewModelScope.launch {
-            // Giả sử repository chưa có hàm chuyên biệt, ta dùng hàm searchBooks hiện có 
-            // vì nó đã hỗ trợ tìm kiếm theo chuỗi (thể loại cũng là chuỗi)
-            val results = repository.searchBooks(category)
-            _uiState.update { it.copy(searchResults = results, isLoading = false) }
+            searchBooks(_uiState.value.searchQuery)
+        }
+    }
+
+    fun updatePriceRange(min: Long?, max: Long?) {
+        _uiState.update { it.copy(minPrice = min, maxPrice = max) }
+        applyFilters()
+    }
+
+    fun updateMinRating(rating: Int) {
+        _uiState.update { it.copy(minRating = rating) }
+        applyFilters()
+    }
+
+    private fun applyFilters() {
+        val currentResults = _uiState.value.searchResults
+        val minPrice = _uiState.value.minPrice ?: 0L
+        val maxPrice = _uiState.value.maxPrice ?: Long.MAX_VALUE
+        val minRating = _uiState.value.minRating
+        val category = _uiState.value.selectedCategory
+
+        val filtered = currentResults.filter { book ->
+            val matchesCategory = if (category == "Tất cả") true else book.category == category
+            val matchesPrice = book.price in minPrice..maxPrice
+            val matchesRating = book.rating >= minRating
+            
+            matchesCategory && matchesPrice && matchesRating
+        }
+
+        _uiState.update { it.copy(filteredResults = filtered) }
+    }
+
+    fun searchByCategory(category: String) {
+        _uiState.update { it.copy(selectedCategory = category) }
+        viewModelScope.launch {
+            searchBooks(_uiState.value.searchQuery)
         }
     }
 }

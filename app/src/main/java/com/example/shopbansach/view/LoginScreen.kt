@@ -21,6 +21,7 @@ import androidx.navigation.NavController
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.ui.auth.AuthButton
 import com.example.shopbansach.ui.auth.AuthTextField
+import com.example.shopbansach.utils.Validator
 import com.example.shopbansach.viewmodel.AuthState
 import com.example.shopbansach.viewmodel.AuthViewModel
 
@@ -58,6 +59,22 @@ fun LoginScreen(
             }
             else -> {}
         }
+    }
+
+    fun performLogin() {
+        val emailError = Validator.validateEmail(email)
+        val passwordError = Validator.validatePassword(password)
+
+        if (emailError != null) {
+            Toast.makeText(context, emailError, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (passwordError != null) {
+            Toast.makeText(context, passwordError, Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        viewModel.login(email, password)
     }
 
     Column(
@@ -100,7 +117,7 @@ fun LoginScreen(
 
         AuthTextField(
             value = email,
-            hint = "Email hoặc Tên đăng nhập",
+            hint = "Email",
             imeAction = ImeAction.Next,
             onValueChange = { email = it }
         )
@@ -112,7 +129,7 @@ fun LoginScreen(
             hint = "Mật khẩu",
             isPassword = true,
             imeAction = ImeAction.Done,
-            onDone = { viewModel.login(email, password) },
+            onDone = { performLogin() },
             onValueChange = { password = it }
         )
 
@@ -137,7 +154,7 @@ fun LoginScreen(
         } else {
             AuthButton(
                 text = "Đăng nhập",
-                onClick = { viewModel.login(email, password) }
+                onClick = { performLogin() }
             )
         }
 

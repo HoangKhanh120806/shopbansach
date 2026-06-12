@@ -195,6 +195,10 @@ fun AppNavigation(
                 AdminOrderManageScreen(navController = navController)
             }
 
+            composable(route = Screen.AdminStatistics.route) {
+                AdminStatisticsScreen(navController = navController)
+            }
+
             composable(route = Screen.AddressList.route) {
                 AddressListScreen(navController = navController)
             }

@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.shopbansach.data.model.Book
 import com.example.shopbansach.data.model.ChatMessage
 import com.example.shopbansach.data.model.ChatRoom
+import com.example.shopbansach.data.model.Notification
 import com.example.shopbansach.data.model.User
 import com.example.shopbansach.data.repository.AuthRepository
 import com.example.shopbansach.data.repository.ChatRepository
 import com.example.shopbansach.data.repository.FirebaseBookRepository
+import com.example.shopbansach.data.repository.NotificationRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +32,8 @@ data class ChatUiState(
 class ChatViewModel(
     private val repository: ChatRepository = ChatRepository(),
     private val authRepository: AuthRepository = AuthRepository(),
-    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository()
+    private val bookRepository: FirebaseBookRepository = FirebaseBookRepository(),
+    private val notificationRepository: NotificationRepository = NotificationRepository()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -102,7 +105,19 @@ class ChatViewModel(
         
         viewModelScope.launch {
             try {
-                repository.sendMessage(roomId, senderId, receiverId, message)
+                val result = repository.sendMessage(roomId, senderId, receiverId, message)
+                if (result.isSuccess) {
+                    val currentUser = authRepository.getCurrentUserData()
+                    notificationRepository.createNotification(
+                        Notification(
+                            userId = receiverId,
+                            title = "Tin nhắn mới từ ${currentUser?.name ?: "Người dùng"}",
+                            message = message,
+                            type = "CHAT",
+                            orderId = ""
+                        )
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Không thể gửi tin nhắn") }
             }

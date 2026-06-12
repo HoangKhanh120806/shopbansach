@@ -21,6 +21,7 @@ import androidx.navigation.NavController
 import com.example.shopbansach.navigation.Screen
 import com.example.shopbansach.ui.auth.AuthButton
 import com.example.shopbansach.ui.auth.AuthTextField
+import com.example.shopbansach.utils.Validator
 import com.example.shopbansach.viewmodel.AuthState
 import com.example.shopbansach.viewmodel.AuthViewModel
 
@@ -47,6 +48,27 @@ fun RegisterScreen(
             Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_LONG).show()
             viewModel.resetState()
         }
+    }
+
+    fun performRegister() {
+        val nameError = Validator.validateName(name)
+        val emailError = Validator.validateEmail(email)
+        val passwordError = Validator.validatePassword(password)
+
+        if (nameError != null) {
+            Toast.makeText(context, nameError, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (emailError != null) {
+            Toast.makeText(context, emailError, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (passwordError != null) {
+            Toast.makeText(context, passwordError, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        viewModel.register(name, email, password)
     }
 
     Column(
@@ -110,7 +132,7 @@ fun RegisterScreen(
             hint = "Mật khẩu",
             isPassword = true,
             imeAction = ImeAction.Done,
-            onDone = { viewModel.register(name, email, password) },
+            onDone = { performRegister() },
             onValueChange = { password = it }
         )
 
@@ -118,7 +140,7 @@ fun RegisterScreen(
 
         AuthButton(
             text = "Đăng ký ngay",
-            onClick = { viewModel.register(name, email, password) },
+            onClick = { performRegister() },
             isLoading = authState is AuthState.Loading
         )
 
