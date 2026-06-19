@@ -498,7 +498,7 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = " ${book.rating}", 
+                        text = if (book.rating > 0) " ${book.rating}" else " Chưa có",
                         fontSize = 12.sp, 
                         fontWeight = FontWeight.Bold,
                         color = Color.Gray

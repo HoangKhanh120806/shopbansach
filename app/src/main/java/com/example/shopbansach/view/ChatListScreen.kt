@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,9 +41,16 @@ fun ChatListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.loadChatRooms()
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            android.widget.Toast.makeText(context, "Lỗi: $it", android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 
     Scaffold(
@@ -82,6 +90,7 @@ fun ChatListScreen(
                         lastMessage = room.lastMessage,
                         timestamp = room.lastMessageTimestamp,
                         avatarUrl = otherUserAvatar,
+                        unreadCount = room.unreadCounts[currentUserId] ?: 0,
                         onClick = {
                             navController.navigate(Screen.Chat.createRoute(otherUserId))
                         }
@@ -99,6 +108,7 @@ fun ChatRoomItem(
     lastMessage: String,
     timestamp: Long,
     avatarUrl: String?,
+    unreadCount: Int = 0,
     onClick: () -> Unit
 ) {
     val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -111,6 +121,7 @@ fun ChatRoomItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // ... (Avatar code)
         Box(
             modifier = Modifier
                 .size(56.dp)
@@ -138,17 +149,44 @@ fun ChatRoomItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(text = time, fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    text = name, 
+                    fontWeight = if (unreadCount > 0) FontWeight.ExtraBold else FontWeight.Bold, 
+                    fontSize = 16.sp
+                )
+                Text(text = time, fontSize = 12.sp, color = if (unreadCount > 0) MaterialTheme.colorScheme.primary else Color.Gray)
             }
-            Text(
-                text = lastMessage,
-                fontSize = 14.sp,
-                color = Color.Gray,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = lastMessage,
+                    fontSize = 14.sp,
+                    color = if (unreadCount > 0) MaterialTheme.colorScheme.onSurface else Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    fontWeight = if (unreadCount > 0) FontWeight.Medium else FontWeight.Normal
+                )
+                if (unreadCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(20.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
     }
 }

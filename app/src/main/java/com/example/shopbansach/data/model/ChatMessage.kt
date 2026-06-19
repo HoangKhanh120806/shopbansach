@@ -16,5 +16,8 @@ data class ChatMessage(
     var message: String = "",
     
     @get:PropertyName("timestamp") @set:PropertyName("timestamp")
-    var timestamp: Long = System.currentTimeMillis()
+    var timestamp: Long = System.currentTimeMillis(),
+
+    @get:PropertyName("read") @set:PropertyName("read")
+    var isRead: Boolean = false
 )

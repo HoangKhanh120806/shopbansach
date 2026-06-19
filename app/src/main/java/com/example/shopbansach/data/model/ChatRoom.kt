@@ -22,5 +22,8 @@ data class ChatRoom(
     var participantAvatars: Map<String, String?> = emptyMap(),
     
     @get:PropertyName("lastBookId") @set:PropertyName("lastBookId")
-    var lastBookId: String? = null // Lưu ID sách khách đang quan tâm
+    var lastBookId: String? = null, // Lưu ID sách khách đang quan tâm
+
+    @get:PropertyName("unreadCounts") @set:PropertyName("unreadCounts")
+    var unreadCounts: Map<String, Int> = emptyMap() // Map của userId -> số tin chưa đọc
 )

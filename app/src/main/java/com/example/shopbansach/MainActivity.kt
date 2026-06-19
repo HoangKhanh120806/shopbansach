@@ -1,6 +1,7 @@
 package com.example.shopbansach
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -53,13 +54,37 @@ class MainActivity : ComponentActivity() {
         setContent {
             var isDarkTheme by remember { mutableStateOf(false) }
             
+            // Sử dụng state để theo dõi thông báo mới từ Intent
+            var notificationData by remember { 
+                mutableStateOf(
+                    intent.getStringExtra("NOTIFICATION_TYPE") to intent.getStringExtra("DATA_ID")
+                ) 
+            }
+
+            // Theo dõi khi Intent thay đổi (onNewIntent)
+            DisposableEffect(intent) {
+                val type = intent.getStringExtra("NOTIFICATION_TYPE")
+                val dataId = intent.getStringExtra("DATA_ID")
+                if (type != null) {
+                    notificationData = type to dataId
+                }
+                onDispose { }
+            }
+            
             ShopbansachTheme(darkTheme = isDarkTheme) {
                 AppNavigation(
                     isDarkTheme = isDarkTheme,
-                    onThemeChange = { isDarkTheme = it }
+                    onThemeChange = { isDarkTheme = it },
+                    startNotificationType = notificationData.first,
+                    startDataId = notificationData.second
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent) // Cập nhật intent mới cho Activity
     }
 
     private fun checkNotificationPermission() {
@@ -95,7 +120,15 @@ class MainActivity : ComponentActivity() {
                                 if (timestamp > startTime || timestamp == 0L) {
                                     val title = dc.document.getString("title") ?: "Thông báo mới"
                                     val message = dc.document.getString("message") ?: ""
-                                    notificationHelper.showNotification(title, message)
+                                    val type = dc.document.getString("type") ?: "SYSTEM"
+                                    
+                                    val dataId = when (type) {
+                                        "CHAT" -> dc.document.getString("senderId")
+                                        "ORDER" -> dc.document.getString("orderId")
+                                        else -> null
+                                    }
+                                    
+                                    notificationHelper.showNotification(title, message, type, dataId)
                                 }
                             }
                         }

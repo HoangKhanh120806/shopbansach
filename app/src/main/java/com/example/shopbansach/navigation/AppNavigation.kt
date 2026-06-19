@@ -25,9 +25,12 @@ import com.google.firebase.auth.FirebaseAuth
 fun AppNavigation(
     isDarkTheme: Boolean,
     onThemeChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    startNotificationType: String? = null,
+    startDataId: String? = null
 ) {
     val navController = rememberNavController()
+    // ... (giữ nguyên các val khác)
     val authRepository = remember { AuthRepository() }
     val currentUser = FirebaseAuth.getInstance().currentUser
     
@@ -37,6 +40,23 @@ fun AppNavigation(
     val wishlistViewModel: WishlistViewModel = viewModel()
     
     var startDestination by remember { mutableStateOf<String?>(null) }
+    var hasNavigatedFromNotification by remember { mutableStateOf(false) }
+
+    // Xử lý điều hướng từ thông báo
+    LaunchedEffect(startNotificationType, startDataId, startDestination) {
+        if (!hasNavigatedFromNotification && startNotificationType != null && startDataId != null && startDestination != null) {
+            when (startNotificationType) {
+                "CHAT" -> {
+                    navController.navigate(Screen.Chat.createRoute(startDataId))
+                    hasNavigatedFromNotification = true
+                }
+                "ORDER" -> {
+                    navController.navigate(Screen.OrderHistory.route)
+                    hasNavigatedFromNotification = true
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (currentUser == null) {

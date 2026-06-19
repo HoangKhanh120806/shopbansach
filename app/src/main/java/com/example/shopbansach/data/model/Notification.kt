@@ -18,6 +18,9 @@ data class Notification(
     @get:PropertyName("type") @set:PropertyName("type")
     var type: String = "SYSTEM", // CHAT, ORDER, SYSTEM
     
+    @get:PropertyName("senderId") @set:PropertyName("senderId")
+    var senderId: String = "", // Thêm trường này để biết ai gửi tin nhắn
+    
     @get:PropertyName("orderId") @set:PropertyName("orderId")
     var orderId: String = "",
     

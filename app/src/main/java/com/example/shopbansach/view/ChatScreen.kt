@@ -1,5 +1,8 @@
 package com.example.shopbansach.view
 
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -107,7 +110,16 @@ fun ChatScreen(
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Nhập tin nhắn...") },
                         shape = RoundedCornerShape(24.dp),
-                        maxLines = 3
+                        maxLines = 3,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (messageText.isNotBlank()) {
+                                    viewModel.sendMessage(messageText)
+                                    messageText = ""
+                                }
+                            }
+                        )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
@@ -206,11 +218,23 @@ fun MessageBubble(message: ChatMessage, isMine: Boolean) {
                 fontSize = 15.sp
             )
         }
-        Text(
-            text = time,
-            fontSize = 10.sp,
-            color = Color.Gray,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp)
-        )
+        ) {
+            Text(
+                text = time,
+                fontSize = 10.sp,
+                color = Color.Gray
+            )
+            if (isMine) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (message.isRead) "Đã xem" else "Đã gửi",
+                    fontSize = 10.sp,
+                    color = if (message.isRead) MaterialTheme.colorScheme.primary else Color.Gray
+                )
+            }
+        }
     }
 }

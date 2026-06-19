@@ -91,7 +91,16 @@ class ChatViewModel(
                 }
                 .collect { msgs ->
                     _uiState.update { it.copy(messages = msgs, isLoading = false) }
+                    // Khi có tin nhắn mới mà mình đang ở trong phòng, đánh dấu đã đọc
+                    markAsRead(roomId)
                 }
+        }
+    }
+
+    private fun markAsRead(roomId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            repository.markMessagesAsRead(roomId, userId)
         }
     }
 
@@ -114,6 +123,7 @@ class ChatViewModel(
                             title = "Tin nhắn mới từ ${currentUser?.name ?: "Người dùng"}",
                             message = message,
                             type = "CHAT",
+                            senderId = senderId, // Truyền ID người gửi vào đây
                             orderId = ""
                         )
                     )

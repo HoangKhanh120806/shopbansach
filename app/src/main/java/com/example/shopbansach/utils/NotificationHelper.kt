@@ -30,21 +30,23 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
-    fun showNotification(title: String, message: String) {
+    fun showNotification(title: String, message: String, type: String? = null, dataId: String? = null) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("NOTIFICATION_TYPE", type)
+            putExtra("DATA_ID", dataId)
         }
         
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent,
-            PendingIntent.FLAG_IMMUTABLE
+            context, System.currentTimeMillis().toInt(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Bạn có thể thay bằng icon app của mình
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // Chỉnh lên HIGH để hiện popup
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
