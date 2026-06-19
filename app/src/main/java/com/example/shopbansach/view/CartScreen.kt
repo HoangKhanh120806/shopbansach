@@ -8,8 +8,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.filled.RemoveShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
@@ -49,7 +51,8 @@ fun CartScreen(
         selectedItems.sumOf { it.price * it.quantity } 
     }
     
-    val shipping = if (subtotal > 0) 30000L else 0L
+    // Logic phí ship: Miễn phí nếu trên 500k
+    val shipping = if (subtotal == 0L) 0L else if (subtotal >= 500000L) 0L else 30000L
     
     val isAllSelected = remember(uiState.cartItems) {
         val available = uiState.cartItems.filter { it.stock > 0 }
@@ -142,6 +145,19 @@ fun CartScreen(
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                                if (subtotal > 0 && subtotal < 500000L) {
+                                    Text(
+                                        "Mua thêm ${CurrencyUtils.formatPrice(500000L - subtotal)} để Freeship",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFFE65100)
+                                    )
+                                } else if (subtotal >= 500000L) {
+                                    Text(
+                                        "Đã đủ điều kiện Freeship",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFF2E7D32)
+                                    )
+                                }
                             }
                             PrimaryButton(
                                 text = "MUA HÀNG (${selectedItems.size})",
@@ -335,10 +351,10 @@ fun CartItemCard(
                     IconButton(
                         onClick = onRemove,
                         colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                            contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
                         )
                     ) {
-                        Icon(Icons.Default.DeleteSweep, null)
+                        Icon(Icons.Outlined.DeleteOutline, null)
                     }
                 }
             }

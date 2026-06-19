@@ -60,7 +60,7 @@ fun SearchScreen(
                 }
             )
         },
-        containerColor = AuthColors.Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -79,16 +79,18 @@ fun SearchScreen(
                     value = uiState.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChange(it) },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Tìm kiếm sách, tác giả...", color = AuthColors.Hint) },
+                    placeholder = { Text("Tìm kiếm sách, tác giả...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = AuthColors.Accent)
+                        Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AuthColors.Accent,
-                        unfocusedBorderColor = AuthColors.Accent.copy(alpha = 0.5f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                         unfocusedContainerColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent
+                        focusedContainerColor = Color.Transparent,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -105,7 +107,7 @@ fun SearchScreen(
                         .size(52.dp)
                         .background(
                             if (uiState.selectedCategory != "Tất cả" || uiState.minPrice != null || uiState.minRating > 0)
-                                AuthColors.Accent.copy(alpha = 0.1f)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                             else Color.Transparent,
                             RoundedCornerShape(12.dp)
                         )
@@ -114,7 +116,7 @@ fun SearchScreen(
                         Icons.Default.Tune, 
                         contentDescription = "Filter",
                         tint = if (uiState.selectedCategory != "Tất cả" || uiState.minPrice != null || uiState.minRating > 0)
-                            AuthColors.Accent else Color.Gray
+                            MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -186,7 +188,7 @@ fun SearchScreen(
                         if (displayList.isEmpty()) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                                    Text("Không tìm thấy kết quả phù hợp", color = AuthColors.Hint)
+                                    Text("Không tìm thấy kết quả phù hợp", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         } else {
@@ -254,7 +256,7 @@ fun FilterBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Price Range
-            Text("Khoảng giá (VNĐ)", fontWeight = FontWeight.SemiBold)
+            Text("Khoảng giá (VNĐ)", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
@@ -263,16 +265,24 @@ fun FilterBottomSheet(
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Tối thiểu") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
-                Text(" - ", modifier = Modifier.padding(horizontal = 8.dp))
+                Text(" - ", modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onSurface)
                 OutlinedTextField(
                     value = uiState.maxPrice?.toString() ?: "",
                     onValueChange = { onUpdatePrice(uiState.minPrice, it.toLongOrNull()) },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Tối đa") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
             }
 
@@ -395,18 +405,18 @@ fun CategoryCard(
                     fontWeight = FontWeight.Bold,
                     lineHeight = 20.sp
                 ),
-                color = Color(0xFF2D2D2D) 
+                color = Color.Black // Văn bản trên nền màu pastel nên để đen/đậm cho dễ đọc
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF2D2D2D).copy(alpha = 0.6f)
+                color = Color.Black.copy(alpha = 0.6f)
             )
         }
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color(0xFF2D2D2D).copy(alpha = 0.2f),
+            tint = Color.Black.copy(alpha = 0.2f),
             modifier = Modifier
                 .size(44.dp)
                 .align(Alignment.BottomEnd)
@@ -452,7 +462,8 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                         fontWeight = FontWeight.Bold
                     ),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 
                 Row(
@@ -462,14 +473,14 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                     Icon(
                         Icons.Default.Storefront, 
                         null, 
-                        tint = Color.Black.copy(alpha = 0.7f), 
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), 
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = book.shopName.ifEmpty { "Người bán" },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black.copy(alpha = 0.9f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -477,7 +488,7 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                 Text(
                     text = book.author,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -487,7 +498,7 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                     text = CurrencyUtils.formatPrice(book.price),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -498,10 +509,10 @@ fun SearchItemRow(book: Book, onClick: () -> Unit) {
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = if (book.rating > 0) " ${book.rating}" else " Chưa có",
+                        text = if (book.rating > 0) " ${book.rating}" else " Chưa có", 
                         fontSize = 12.sp, 
                         fontWeight = FontWeight.Bold,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
