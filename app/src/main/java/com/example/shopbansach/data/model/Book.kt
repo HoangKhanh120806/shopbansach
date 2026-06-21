@@ -14,5 +14,6 @@ data class Book(
     val shopName: String = "", // Để trống để bắt buộc lấy từ dữ liệu thực tế
     val shopAvatarUrl: String? = null,
     val category: String = "Khác",
-    val stock: Int = 0
+    val stock: Int = 0,
+    val reviewCount: Int = 0
 )

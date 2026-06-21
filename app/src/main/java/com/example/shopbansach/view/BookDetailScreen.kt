@@ -3,6 +3,7 @@ package com.example.shopbansach.view
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,6 +25,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
@@ -45,6 +48,7 @@ import com.example.shopbansach.utils.PrimaryButton
 import com.example.shopbansach.viewmodel.BookDetailViewModel
 import com.example.shopbansach.viewmodel.CartActionState
 import com.example.shopbansach.viewmodel.CartViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -60,8 +64,10 @@ fun BookDetailScreen(
     val cartUiState by cartViewModel.uiState.collectAsState()
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     var showQuantitySheet by remember { mutableStateOf(false) }
+    var reviewSectionOffset by remember { mutableFloatStateOf(0f) }
     var selectedQuantity by remember { mutableIntStateOf(1) }
     var showReviewDialog by remember { mutableStateOf(false) }
 
@@ -199,9 +205,15 @@ fun BookDetailScreen(
                         ) {
                             StatItem(
                                 label = "Đánh giá", 
-                                value = if (book.rating > 0) "${book.rating}" else "Chưa có", 
+                                value = if (book.reviewCount > 0) "${book.rating}" else "Chưa có",
+                                subValue = if (book.reviewCount > 0) "${book.reviewCount} lượt" else "Đánh giá ngay",
                                 icon = Icons.Default.Star, 
-                                iconColor = Color(0xFFFFB300)
+                                iconColor = Color(0xFFFFB300),
+                                onClick = {
+                                    coroutineScope.launch {
+                                        scrollState.animateScrollTo(reviewSectionOffset.toInt())
+                                    }
+                                }
                             )
                             StatItem(label = "Số trang", value = "${book.pages}", icon = Icons.Default.MenuBook) 
                             StatItem(
@@ -212,30 +224,32 @@ fun BookDetailScreen(
                             )
                         }
 
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), thickness = 0.5.dp)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
                         Text(
                             text = "Tóm tắt nội dung",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.primary
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = book.synopsis,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 24.sp,
+                            lineHeight = 22.sp,
                             textAlign = TextAlign.Justify
                         )
 
                         // MỤC ĐÁNH GIÁ SẢN PHẨM
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .onGloballyPositioned { reviewSectionOffset = it.positionInRoot().y }
+                        )
                         ReviewSection(
                             reviews = uiState.reviews,
                             canReview = uiState.canReview,
+                            reviewMessage = uiState.reviewMessage,
                             onAddReviewClick = { showReviewDialog = true }
                         )
                         
@@ -243,11 +257,8 @@ fun BookDetailScreen(
                             Spacer(modifier = Modifier.height(32.dp))
                             Text(
                                 text = "Sách liên quan",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontFamily = FontFamily.Serif,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = MaterialTheme.colorScheme.primary
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             LazyRow(
@@ -308,50 +319,155 @@ fun BookDetailScreen(
 fun ReviewSection(
     reviews: List<Review>,
     canReview: Boolean,
+    reviewMessage: String?,
     onAddReviewClick: () -> Unit
 ) {
-    Column {
+    var isExpanded by remember { mutableStateOf(false) }
+    val displayedReviews = if (isExpanded) reviews else reviews.take(3)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp)
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .padding(4.dp)
+    ) {
+        // Tiêu đề và nút viết nhận xét
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Đánh giá từ độc giả",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.primary
+                text = "Đánh giá (${reviews.size})",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
             )
             
             if (canReview) {
                 TextButton(onClick = onAddReviewClick) {
-                    Text("Viết đánh giá")
+                    Text("Viết nhận xét", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
         
-        if (!canReview) {
+        if (!canReview && reviewMessage != null) {
             Text(
-                text = "Bạn chỉ có thể đánh giá sau khi đã mua sách này.",
+                text = reviewMessage,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+            )
+        }
+
+        if (reviews.isNotEmpty()) {
+            // TÓM TẮT ĐÁNH GIÁ (BIỂU ĐỒ SAO)
+            RatingSummary(reviews)
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 16.dp),
+                thickness = 0.5.dp,
+                color = Color.LightGray.copy(alpha = 0.3f)
             )
         }
         
         if (reviews.isEmpty()) {
-            Text(
-                text = "Chưa có đánh giá",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.RateReview, null, tint = Color.LightGray, modifier = Modifier.size(48.dp))
+                    Text(
+                        text = "Chưa có đánh giá nào",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            }
         } else {
-            reviews.forEach { review ->
+            displayedReviews.forEachIndexed { index, review ->
                 ReviewItem(review)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+                if (index < displayedReviews.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        thickness = 0.5.dp,
+                        color = Color.LightGray.copy(alpha = 0.3f)
+                    )
+                }
+            }
+
+            if (reviews.size > 3) {
+                TextButton(
+                    onClick = { isExpanded = !isExpanded },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text(if (isExpanded) "Thu gọn" else "Xem tất cả ${reviews.size} đánh giá")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RatingSummary(reviews: List<Review>) {
+    val totalReviews = reviews.size
+    val avgRating = reviews.map { it.rating }.average()
+    
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Cột trái: Điểm trung bình
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = String.format("%.1f", avgRating),
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row {
+                repeat(5) { index ->
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (index < avgRating.toInt()) Color(0xFFFFB300) else Color.LightGray
+                    )
+                }
+            }
+            Text(
+                text = "$totalReviews nhận xét",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
+            )
+        }
+
+        Spacer(modifier = Modifier.width(24.dp))
+
+        // Cột phải: Biểu đồ thanh ngang
+        Column(modifier = Modifier.weight(2f)) {
+            for (i in 5 downTo 1) {
+                val count = reviews.count { it.rating == i }
+                val progress = if (totalReviews > 0) count.toFloat() / totalReviews else 0f
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 1.dp)
+                ) {
+                    Text(text = "$i", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(12.dp))
+                    Icon(Icons.Default.Star, null, tint = Color.Gray, modifier = Modifier.size(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.weight(1f).height(6.dp).clip(CircleShape),
+                        color = Color(0xFFFFB300),
+                        trackColor = Color.LightGray.copy(alpha = 0.3f)
+                    )
+                }
             }
         }
     }
@@ -360,9 +476,9 @@ fun ReviewSection(
 @Composable
 fun ReviewItem(review: Review) {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+            Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
                 if (!review.userAvatarUrl.isNullOrEmpty()) {
                     AsyncImage(model = review.userAvatarUrl, contentDescription = null, contentScale = ContentScale.Crop)
                 } else {
@@ -370,22 +486,29 @@ fun ReviewItem(review: Review) {
                 }
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = review.userName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(text = sdf.format(Date(review.createdAt)), fontSize = 11.sp, color = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = if (index < review.rating) Color(0xFFFFB300) else Color.LightGray
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = sdf.format(Date(review.createdAt)), fontSize = 11.sp, color = Color.Gray)
+                }
             }
         }
-        Row(modifier = Modifier.padding(vertical = 4.dp)) {
-            repeat(5) { index ->
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = if (index < review.rating) Color(0xFFFFB300) else Color.LightGray
-                )
-            }
-        }
-        Text(text = review.comment, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = review.comment, 
+            style = MaterialTheme.typography.bodyMedium, 
+            color = MaterialTheme.colorScheme.onSurface,
+            lineHeight = 20.sp
+        )
     }
 }
 
@@ -590,14 +713,37 @@ fun BookHeaderSection(book: Book) {
 }
 
 @Composable
-fun StatItem(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, iconColor: Color = MaterialTheme.colorScheme.primary) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+fun StatItem(
+    label: String, 
+    value: String, 
+    subValue: String? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector, 
+    iconColor: Color = MaterialTheme.colorScheme.primary,
+    onClick: (() -> Unit)? = null
+) {
+    Card(
+        modifier = Modifier
+            .width(100.dp)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp).fillMaxWidth()
+        ) {
             Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(text = value, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(text = value, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = subValue ?: label, 
+                style = MaterialTheme.typography.labelSmall, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -610,17 +756,17 @@ fun SellerInfoSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
@@ -631,49 +777,46 @@ fun SellerInfoSection(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = seller?.shopName ?: book.shopName,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Verified, null, tint = Color(0xFF1976D2), modifier = Modifier.size(12.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Người bán uy tín", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Shop chính hãng", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
             }
             
-            Row {
-                // Nút Chat
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
                     onClick = onChatClick,
                     modifier = Modifier
-                        .size(36.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                        .size(32.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Chat, 
                         contentDescription = "Chat", 
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(20.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                // Nút Xem Shop
-                Button(
+                OutlinedButton(
                     onClick = onVisitShop,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.height(32.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.height(36.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Xem Shop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Xem Shop", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -690,6 +833,14 @@ fun RelatedBookCard(book: Book, onClick: () -> Unit) {
             contentScale = ContentScale.Crop
         )
         Text(book.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(CurrencyUtils.formatPrice(book.price), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(10.dp))
+            Text(
+                text = if (book.rating > 0) " ${book.rating}" else " -",
+                fontSize = 10.sp,
+                color = Color.Gray
+            )
+        }
+        Text(CurrencyUtils.formatPrice(book.price), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
     }
 }

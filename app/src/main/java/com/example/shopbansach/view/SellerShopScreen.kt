@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -204,6 +205,23 @@ fun BookGridItem(book: Book, onClick: () -> Unit) {
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Star, 
+                        null, 
+                        tint = Color(0xFFFFB300), 
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = if (book.rating > 0) " ${book.rating}" else " Chưa có",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
                     text = String.format(Locale.US, "%,dđ", book.price),

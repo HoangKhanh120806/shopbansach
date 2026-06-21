@@ -22,6 +22,7 @@ import java.util.Calendar
 data class MyShopUiState(
     val myBooks: List<Book> = emptyList(),
     val bookSoldCounts: Map<String, Int> = emptyMap(),
+    val bookRevenues: Map<String, Long> = emptyMap(),
     val currentUser: User? = null,
     val totalRevenue: Long = 0,
     val deliveredRevenue: Long = 0,
@@ -98,6 +99,7 @@ class MyShopViewModel(
                 var soldTodayCount = 0
                 var newOrdersCount = 0
                 val bookSoldMap = mutableMapOf<String, Int>()
+                val bookRevMap = mutableMapOf<String, Long>()
 
                 val startOfToday = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
@@ -122,6 +124,7 @@ class MyShopViewModel(
                                 totalSoldCount += item.quantity
 
                                 bookSoldMap[item.bookId] = (bookSoldMap[item.bookId] ?: 0) + item.quantity
+                                bookRevMap[item.bookId] = (bookRevMap[item.bookId] ?: 0L) + itemTotal
 
                                 if (order.createdAt >= startOfToday) {
                                     soldTodayCount += item.quantity
@@ -148,6 +151,7 @@ class MyShopViewModel(
                 _uiState.update { it.copy(
                     myBooks = myBooks,
                     bookSoldCounts = bookSoldMap,
+                    bookRevenues = bookRevMap,
                     totalRevenue = totalRev,
                     deliveredRevenue = deliveredRev,
                     pendingRevenue = pendingRev,

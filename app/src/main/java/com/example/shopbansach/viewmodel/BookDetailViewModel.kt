@@ -25,6 +25,7 @@ data class BookDetailUiState(
     val isLoading: Boolean = false,
     val isReviewLoading: Boolean = false,
     val canReview: Boolean = false,
+    val reviewMessage: String? = null,
     val isWishlisted: Boolean = false,
     val errorMessage: String? = null
 )
@@ -56,10 +57,23 @@ class BookDetailViewModel(
                     val reviews = reviewRepository.getReviewsForBook(bookId)
                     
                     val currentUserId = auth.currentUser?.uid
-                    val canReview = if (currentUserId != null) {
+                    val hasPurchased = if (currentUserId != null) {
                         orderRepository.hasUserPurchasedBook(currentUserId, bookId)
                     } else {
                         false
+                    }
+                    val alreadyReviewed = if (currentUserId != null) {
+                        reviewRepository.hasUserReviewed(currentUserId, bookId)
+                    } else {
+                        false
+                    }
+                    
+                    val canReview = hasPurchased && !alreadyReviewed
+                    val reviewMessage = when {
+                        currentUserId == null -> "Đăng nhập để đánh giá"
+                        !hasPurchased -> "Bạn chỉ có thể đánh giá sau khi đã mua sách này"
+                        alreadyReviewed -> "Bạn đã đánh giá sản phẩm này rồi"
+                        else -> null
                     }
 
                     val isWishlisted = if (currentUserId != null) {
@@ -74,6 +88,7 @@ class BookDetailViewModel(
                         relatedBooks = related,
                         reviews = reviews,
                         canReview = canReview,
+                        reviewMessage = reviewMessage,
                         isWishlisted = isWishlisted,
                         isLoading = false
                     ) }
@@ -103,6 +118,9 @@ class BookDetailViewModel(
                 
                 val hasPurchased = orderRepository.hasUserPurchasedBook(user.id, bookId)
                 if (!hasPurchased) throw Exception("Bạn chỉ có thể đánh giá sau khi đã mua sách này")
+                
+                val alreadyReviewed = reviewRepository.hasUserReviewed(user.id, bookId)
+                if (alreadyReviewed) throw Exception("Bạn đã đánh giá sản phẩm này rồi")
 
                 val review = Review(
                     bookId = bookId,
@@ -114,12 +132,16 @@ class BookDetailViewModel(
                 )
                 val result = reviewRepository.addReview(review)
                 if (result.isSuccess) {
-                    val newReviews = reviewRepository.getReviewsForBook(bookId)
+                    // Đợi 1 chút để Firestore cập nhật xong (vì transaction commit xong nhưng SERVER có thể trễ vài ms)
+                    // Tuy nhiên getBookById với ID thường lấy bản copy mới nhất từ Server.
                     val updatedBook = repository.getBookById(bookId)
+                    val newReviews = reviewRepository.getReviewsForBook(bookId)
                     
                     _uiState.update { it.copy(
                         book = updatedBook,
                         reviews = newReviews, 
+                        canReview = false, // Vừa đánh giá xong thì không đánh giá tiếp được
+                        reviewMessage = "Bạn đã đánh giá sản phẩm này rồi",
                         isReviewLoading = false
                     ) }
                     onComplete(Result.success(Unit))

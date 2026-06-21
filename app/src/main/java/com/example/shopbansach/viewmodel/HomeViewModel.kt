@@ -77,19 +77,19 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    fun loadNewArrivals(page: Int) {
+    fun loadNewArrivals(page: Int, forceRefresh: Boolean = false) {
         if (page < 1 || (page > _uiState.value.totalPages && _uiState.value.totalPages > 0)) return
         
-        // Tránh tải lại nếu trang hiện tại đang hiển thị và không phải đang load
-        if (page == _uiState.value.currentPage && _uiState.value.newArrivals.isNotEmpty() && !_uiState.value.isNewArrivalsLoading) return
+        // Tránh tải lại nếu trang hiện tại đang hiển thị và không phải đang load, TRỪ KHI forceRefresh = true
+        if (!forceRefresh && page == _uiState.value.currentPage && _uiState.value.newArrivals.isNotEmpty() && !_uiState.value.isNewArrivalsLoading) return
 
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            // Ngay lập tức xóa sách cũ và bật trạng thái loading
+            // Ngay lập tức xóa sách cũ và bật trạng thái loading (chỉ xóa nếu force hoặc sang trang mới)
             _uiState.update { it.copy(
                 isNewArrivalsLoading = true, 
                 currentPage = page,
-                newArrivals = emptyList() 
+                newArrivals = if (page != _uiState.value.currentPage || forceRefresh) emptyList() else it.newArrivals
             ) }
 
             try {
@@ -126,6 +126,21 @@ class HomeViewModel : ViewModel() {
                 ) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isNewArrivalsLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun refreshData() {
+        viewModelScope.launch {
+            try {
+                // Làm mới cả sách nổi bật và danh sách mới nhất
+                val featured = bookRepository.getFeaturedBooks()
+                _uiState.update { it.copy(featuredBooks = featured) }
+                
+                // Ép buộc tải lại dữ liệu mới từ Server
+                loadNewArrivals(_uiState.value.currentPage, forceRefresh = true)
+            } catch (e: Exception) {
+                // Bỏ qua lỗi
             }
         }
     }

@@ -51,6 +51,16 @@ fun HomeScreen(
     val notificationUiState by notificationViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
 
+    // Sử dụng disposable effect hoặc lifecycle để phát hiện khi quay lại trang
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+
+    LaunchedEffect(lifecycleState) {
+        if (lifecycleState == androidx.lifecycle.Lifecycle.State.RESUMED) {
+            viewModel.refreshData()
+        }
+    }
+
     LaunchedEffect(uiState.currentPage) {
         if (uiState.currentPage > 1 || uiState.newArrivals.isNotEmpty()) {
             listState.animateScrollToItem(2)

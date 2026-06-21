@@ -158,6 +158,37 @@ fun AdminStatisticsScreen(
                         }
                     }
                 }
+
+                // Doanh thu theo Shop
+                item {
+                    Text("Doanh thu theo Shop", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
+
+                if (uiState.revenueByShop.isEmpty()) {
+                    item {
+                        Text("Chưa có dữ liệu doanh thu shop", color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                } else {
+                    items(uiState.revenueByShop) { (shopName, revenue) ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(shopName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                Text(
+                                    formatCurrency(revenue),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF4CAF50)
+                                )
+                            }
+                        }
+                    }
+                }
                 
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
@@ -190,12 +221,13 @@ fun formatCurrency(amount: Long): String {
 }
 
 fun getStatusColor(status: String): Color {
-    return when (status) {
-        "Chờ xác nhận" -> Color(0xFFFFC107)
-        "Đã xác nhận" -> Color(0xFF2196F3)
-        "Đang giao" -> Color(0xFF03A9F4)
-        "Hoàn thành" -> Color(0xFF4CAF50)
-        "Đã hủy" -> Color(0xFFF44336)
+    val s = status.trim().lowercase()
+    return when {
+        s.contains("chờ") -> Color(0xFFFFC107)
+        s.contains("xác nhận") -> Color(0xFF2196F3)
+        s.contains("đang giao") -> Color(0xFF03A9F4)
+        s.contains("đã giao") || s.contains("hoàn thành") || s.contains("thành công") -> Color(0xFF4CAF50)
+        s.contains("hủy") -> Color(0xFFF44336)
         else -> Color.Gray
     }
 }

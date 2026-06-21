@@ -3,7 +3,9 @@ package com.example.shopbansach.view
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,13 +14,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -162,9 +165,11 @@ fun MyShopScreen(
                     
                     Text("Tổng quan kinh doanh", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
                     
-                    ShopDashboard(uiState, onManageOrders = {
-                        navController.navigate(Screen.SellerOrderManage.route)
-                    })
+                    ShopDashboard(
+                        uiState = uiState, 
+                        onManageOrders = { navController.navigate(Screen.SellerOrderManage.route) },
+                        onViewRevenue = { navController.navigate(Screen.RevenueDetail.route) }
+                    )
                     
                     Spacer(modifier = Modifier.height(24.dp))
                     Row(
@@ -204,55 +209,96 @@ fun MyShopScreen(
 }
 
 @Composable
-fun ShopDashboard(uiState: com.example.shopbansach.viewmodel.MyShopUiState, onManageOrders: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatCard(
-                modifier = Modifier.weight(1f),
-                title = "Doanh thu thực",
-                value = CurrencyUtils.formatPrice(uiState.deliveredRevenue),
-                icon = Icons.Default.AccountBalanceWallet,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            StatCard(
-                modifier = Modifier.weight(1f),
-                title = "Đang chờ",
-                value = CurrencyUtils.formatPrice(uiState.pendingRevenue),
-                icon = Icons.Default.PendingActions,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-        
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatCard(
-                modifier = Modifier.weight(1f),
-                title = "Bán hôm nay",
-                value = "${uiState.soldToday} cuốn",
-                icon = Icons.Default.Today,
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            StatCard(
-                modifier = Modifier.weight(1f).clickable { onManageOrders() },
-                title = "Đơn mới",
-                value = "${uiState.newOrdersCount} đơn",
-                icon = Icons.Default.FiberNew,
-                containerColor = Color(0xFFFFE0B2),
-                contentColor = Color(0xFFE65100)
-            )
+fun ShopDashboard(uiState: com.example.shopbansach.viewmodel.MyShopUiState, onManageOrders: () -> Unit, onViewRevenue: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Ví tiền chính - Tổng doanh thu
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { onViewRevenue() },
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Box(modifier = Modifier.background(
+                Brush.linearGradient(
+                    colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                )
+            )) {
+                Column(modifier = Modifier.padding(20.dp).fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Tổng doanh thu ước tính", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
+                        Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White.copy(alpha = 0.6f))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = CurrencyUtils.formatPrice(uiState.totalRevenue),
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Đã hoàn thành", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
+                            Text(CurrencyUtils.formatPrice(uiState.deliveredRevenue), color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        VerticalDivider(modifier = Modifier.height(30.dp).padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.3f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Tổng đã bán", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
+                            Text("${uiState.totalSold} cuốn", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
         }
 
-        Button(
-            onClick = onManageOrders,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        // Lưới thống kê chi tiết
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatCard(
+                modifier = Modifier.weight(1f),
+                title = "Tiền đang chờ",
+                value = CurrencyUtils.formatPrice(uiState.pendingRevenue),
+                icon = Icons.Default.Timer,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Bán hôm nay",
+                        value = "${uiState.soldToday} cuốn",
+                        icon = Icons.AutoMirrored.Filled.TrendingUp,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+        }
+        
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { onManageOrders() },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE0B2).copy(alpha = 0.6f)),
+            border = BorderStroke(1.dp, Color(0xFFFFB74D).copy(alpha = 0.3f))
         ) {
-            Icon(Icons.AutoMirrored.Filled.ListAlt, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Quản lý tất cả đơn hàng")
+            Row(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(40.dp).background(Color(0xFFFFB74D), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.FiberNew, null, tint = Color.White)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Đơn hàng mới", fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                        Text("Có ${uiState.newOrdersCount} đơn đang chờ xử lý", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE65100).copy(alpha = 0.8f))
+                    }
+                }
+                Icon(Icons.Default.ChevronRight, null, tint = Color(0xFFE65100))
+            }
         }
     }
 }

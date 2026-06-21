@@ -246,6 +246,10 @@ fun AppNavigation(
             composable(route = Screen.SellerOrderManage.route) {
                 SellerOrderManageScreen(navController = navController)
             }
+
+            composable(route = Screen.RevenueDetail.route) {
+                RevenueDetailScreen(navController = navController)
+            }
             
             composable(route = Screen.Notifications.route) {
                 NotificationScreen(navController = navController)
