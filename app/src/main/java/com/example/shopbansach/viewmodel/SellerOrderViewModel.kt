@@ -61,17 +61,24 @@ class SellerOrderViewModel(
                 
                 // 3. Gửi thông báo cho người mua
                 if (order != null) {
-                    val notificationTitle = when (newStatus) {
-                        "Đang giao" -> "🚚 Đơn hàng đang đến với bạn"
-                        "Đã giao" -> "✅ Giao hàng thành công"
-                        "Hủy" -> "❌ Đơn hàng đã bị hủy"
+                    val statusClean = newStatus.trim()
+                    val firstItemName = order.items.firstOrNull()?.title ?: "sản phẩm"
+                    val moreItems = if (order.items.size > 1) " và ${order.items.size - 1} sản phẩm khác" else ""
+
+                    val notificationTitle = when {
+                        statusClean.contains("Đang giao") -> "🚚 Đơn hàng đang đến với bạn"
+                        statusClean.contains("Đã giao") || statusClean.contains("thành công") -> "✅ Giao hàng thành công"
+                        statusClean.contains("Hủy") -> "❌ Đơn hàng đã bị hủy"
                         else -> "📦 Cập nhật đơn hàng"
                     }
 
-                    val notificationMessage = when (newStatus) {
-                        "Đang giao" -> "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được gửi đi. Bạn vui lòng chú ý điện thoại nhé!"
-                        "Đã giao" -> "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được giao tới bạn. Nếu hài lòng, hãy để lại đánh giá cho shop nhé! ❤️"
-                        "Hủy" -> "Rất tiếc, đơn hàng #${orderId.takeLast(6).uppercase()} đã bị hủy. Nhấn để xem chi tiết."
+                    val notificationMessage = when {
+                        statusClean.contains("Đang giao") -> 
+                            "Cuốn sách '$firstItemName'$moreItems đã được gửi đi. Bạn vui lòng chú ý điện thoại nhé!"
+                        statusClean.contains("Đã giao") || statusClean.contains("thành công") -> 
+                            "Đơn hàng có '$firstItemName' đã giao thành công. Bạn đánh giá sản phẩm để nhận xu nhé! ❤️"
+                        statusClean.contains("Hủy") -> 
+                            "Rất tiếc, đơn hàng #${orderId.takeLast(6).uppercase()} đã bị hủy. Nhấn để xem lý do."
                         else -> "Đơn hàng #${orderId.takeLast(6).uppercase()} của bạn đã chuyển sang trạng thái: $newStatus"
                     }
 

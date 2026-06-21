@@ -20,11 +20,14 @@ class NotificationHelper(private val context: Context) {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Cập nhật đơn hàng"
-            val descriptionText = "Thông báo khi trạng thái đơn hàng thay đổi"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val name = "Thông báo hệ thống"
+            val descriptionText = "Thông báo về đơn hàng và tin nhắn"
+            val importance = NotificationManager.IMPORTANCE_HIGH // Chỉnh lên HIGH để hiện Popup trên đầu màn hình
             val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
+                enableLights(true)
+                enableVibration(true)
+                lightColor = android.graphics.Color.BLUE
             }
             notificationManager.createNotificationChannel(channel)
         }

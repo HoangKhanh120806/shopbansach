@@ -212,11 +212,15 @@ class CartViewModel(
                 }.await()
 
                 // THÔNG BÁO CHO SELLER VÀ BUYER
+                val firstItemName = checkoutItems.firstOrNull()?.title ?: "sản phẩm"
+                val moreItems = if (checkoutItems.size > 1) " và ${checkoutItems.size - 1} sản phẩm khác" else ""
+
                 notificationRepository.createNotification(
                     Notification(
                         userId = currentUserId,
-                        title = "Đặt hàng thành công",
-                        message = "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được tạo. Vui lòng chờ Shop xác nhận.",
+                        title = "🎉 Đặt hàng thành công",
+                        message = "Đơn hàng chứa '$firstItemName'$moreItems đã được tạo. Shop sẽ sớm xác nhận cho bạn nhé!",
+                        type = "ORDER",
                         orderId = orderId
                     )
                 )
@@ -227,8 +231,9 @@ class CartViewModel(
                         notificationRepository.createNotification(
                             Notification(
                                 userId = sellerId,
-                                title = "Đơn hàng mới",
-                                message = "Bạn có đơn hàng mới #${orderId.takeLast(6).uppercase()}. Hãy vào kiểm tra và duyệt ngay!",
+                                title = "🆕 Có đơn hàng mới!",
+                                message = "Khách hàng vừa đặt '$firstItemName'$moreItems từ shop của bạn. Kiểm tra ngay!",
+                                type = "ORDER",
                                 orderId = orderId
                             )
                         )

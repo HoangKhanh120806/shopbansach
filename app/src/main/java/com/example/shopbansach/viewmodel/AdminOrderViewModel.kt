@@ -58,18 +58,41 @@ class AdminOrderViewModel(
             
             if (result.isSuccess) {
                 if (order != null) {
+                    val statusClean = newStatus.trim()
+                    val firstItemName = order.items.firstOrNull()?.title ?: "sản phẩm"
+                    val moreItems = if (order.items.size > 1) " và ${order.items.size - 1} sản phẩm khác" else ""
+
+                    val notificationTitle = when {
+                        statusClean.contains("Đang giao") -> "🚚 Đơn hàng đang đến với bạn"
+                        statusClean.contains("Đã giao") || statusClean.contains("thành công") -> "✅ Giao hàng thành công"
+                        statusClean.contains("Hủy") -> "❌ Đơn hàng đã bị hủy"
+                        else -> "📦 Cập nhật đơn hàng"
+                    }
+
+                    val notificationMessage = when {
+                        statusClean.contains("Đang giao") -> 
+                            "Cuốn sách '$firstItemName'$moreItems đã được gửi đi. Bạn vui lòng chú ý điện thoại nhé!"
+                        statusClean.contains("Đã giao") || statusClean.contains("thành công") -> 
+                            "Đơn hàng có '$firstItemName' đã giao thành công. Bạn đánh giá sản phẩm để nhận xu nhé! ❤️"
+                        statusClean.contains("Hủy") -> 
+                            "Rất tiếc, đơn hàng #${orderId.takeLast(6).uppercase()} đã bị hủy bởi hệ thống."
+                        else -> "Đơn hàng #${orderId.takeLast(6).uppercase()} của bạn đã chuyển sang trạng thái: $newStatus"
+                    }
+
                     notificationRepository.createNotification(
                         Notification(
                             userId = order.userId,
-                            title = "Cập nhật đơn hàng",
-                            message = "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được Admin chuyển thành: $newStatus",
+                            title = notificationTitle,
+                            message = notificationMessage,
+                            type = "ORDER",
                             orderId = orderId
                         )
                     )
                 }
                 _uiState.update { it.copy(actionSuccessMessage = "Đã cập nhật trạng thái đơn hàng", isLoading = false) }
                 loadOrders()
-            } else {
+            }
+ else {
                 _uiState.update { it.copy(isLoading = false, errorMessage = result.exceptionOrNull()?.message) }
             }
         }
