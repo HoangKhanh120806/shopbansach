@@ -46,15 +46,77 @@ fun AddEditAddressScreen(
     var city by remember { mutableStateOf("") }
     var isDefault by remember { mutableStateOf(false) }
 
+    val cities = listOf(
+        "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Hải Phòng", "Cần Thơ", 
+        "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", 
+        "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", 
+        "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", 
+        "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", 
+        "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình", 
+        "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", 
+        "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", 
+        "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Quảng Bình", 
+        "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", 
+        "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", 
+        "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", 
+        "Vĩnh Phúc", "Yên Bái", "Phú Yên"
+    )
+    var expanded by remember { mutableStateOf(false) }
+
+    var fullNameError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+    var addressError by remember { mutableStateOf<String?>(null) }
+    var cityError by remember { mutableStateOf<String?>(null) }
+
+    val validateInputs = {
+        var isValid = true
+        if (fullName.isBlank()) {
+            fullNameError = "Vui lòng nhập họ tên"
+            isValid = false
+        } else {
+            fullNameError = null
+        }
+
+        if (phoneNumber.isBlank()) {
+            phoneError = "Vui lòng nhập số điện thoại"
+            isValid = false
+        } else if (phoneNumber.length != 10) {
+            phoneError = "Số điện thoại phải đúng 10 số"
+            isValid = false
+        } else if (!phoneNumber.startsWith("0")) {
+            phoneError = "Số điện thoại phải bắt đầu bằng số 0"
+            isValid = false
+        } else {
+            phoneError = null
+        }
+
+        if (addressDetail.isBlank()) {
+            addressError = "Vui lòng nhập địa chỉ chi tiết"
+            isValid = false
+        } else {
+            addressError = null
+        }
+
+        if (city.isBlank()) {
+            cityError = "Vui lòng nhập tỉnh/thành phố"
+            isValid = false
+        } else {
+            cityError = null
+        }
+        isValid
+    }
+
     val handleSave = {
-        viewModel.saveAddress(
-            id = if (addressId == "new") null else addressId,
-            fullName = fullName,
-            phoneNumber = phoneNumber,
-            addressDetail = addressDetail,
-            city = city,
-            isDefault = isDefault
-        )
+        if (validateInputs()) {
+            viewModel.saveAddress(
+                id = if (addressId == "new") null else addressId,
+                fullName = fullName,
+                phoneNumber = phoneNumber,
+                addressDetail = addressDetail,
+                city = city,
+                isDefault = isDefault
+            )
+        }
     }
 
     LaunchedEffect(addressId) {
@@ -116,11 +178,16 @@ fun AddEditAddressScreen(
 
             OutlinedTextField(
                 value = fullName,
-                onValueChange = { fullName = it },
+                onValueChange = { 
+                    fullName = it
+                    if (fullNameError != null) fullNameError = null
+                },
                 label = { Text("Họ và tên") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
+                isError = fullNameError != null,
+                supportingText = { fullNameError?.let { Text(it) } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
@@ -129,11 +196,17 @@ fun AddEditAddressScreen(
 
             OutlinedTextField(
                 value = phoneNumber,
-                onValueChange = { phoneNumber = it },
+                onValueChange = { 
+                    phoneNumber = it.filter { char -> char.isDigit() }
+                    if (phoneError != null) phoneError = null
+                },
                 label = { Text("Số điện thoại") },
+                placeholder = { Text("Ví dụ: 0987654321") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
+                isError = phoneError != null,
+                supportingText = { phoneError?.let { Text(it) } },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
@@ -142,30 +215,58 @@ fun AddEditAddressScreen(
 
             OutlinedTextField(
                 value = addressDetail,
-                onValueChange = { addressDetail = it },
+                onValueChange = { 
+                    addressDetail = it
+                    if (addressError != null) addressError = null
+                },
                 label = { Text("Địa chỉ chi tiết (Số nhà, tên đường)") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
+                isError = addressError != null,
+                supportingText = { addressError?.let { Text(it) } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = city,
-                onValueChange = { city = it },
-                label = { Text("Tỉnh / Thành phố") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { 
-                    focusManager.clearFocus()
-                    handleSave()
-                })
-            )
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Tỉnh / Thành phố") },
+                    placeholder = { Text("Chọn tỉnh/thành phố") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    isError = cityError != null,
+                    supportingText = { cityError?.let { Text(it) } }
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    cities.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(selectionOption) },
+                            onClick = {
+                                city = selectionOption
+                                cityError = null
+                                expanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
