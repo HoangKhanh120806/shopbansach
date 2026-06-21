@@ -61,10 +61,24 @@ class SellerOrderViewModel(
                 
                 // 3. Gửi thông báo cho người mua
                 if (order != null) {
+                    val notificationTitle = when (newStatus) {
+                        "Đang giao" -> "🚚 Đơn hàng đang đến với bạn"
+                        "Đã giao" -> "✅ Giao hàng thành công"
+                        "Hủy" -> "❌ Đơn hàng đã bị hủy"
+                        else -> "📦 Cập nhật đơn hàng"
+                    }
+
+                    val notificationMessage = when (newStatus) {
+                        "Đang giao" -> "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được gửi đi. Bạn vui lòng chú ý điện thoại nhé!"
+                        "Đã giao" -> "Đơn hàng #${orderId.takeLast(6).uppercase()} đã được giao tới bạn. Nếu hài lòng, hãy để lại đánh giá cho shop nhé! ❤️"
+                        "Hủy" -> "Rất tiếc, đơn hàng #${orderId.takeLast(6).uppercase()} đã bị hủy. Nhấn để xem chi tiết."
+                        else -> "Đơn hàng #${orderId.takeLast(6).uppercase()} của bạn đã chuyển sang trạng thái: $newStatus"
+                    }
+
                     val notification = Notification(
                         userId = order.userId,
-                        title = "Cập nhật đơn hàng",
-                        message = "Đơn hàng #${orderId.takeLast(6).uppercase()} của bạn đã chuyển sang trạng thái: $newStatus",
+                        title = notificationTitle,
+                        message = notificationMessage,
                         type = "ORDER",
                         orderId = orderId
                     )

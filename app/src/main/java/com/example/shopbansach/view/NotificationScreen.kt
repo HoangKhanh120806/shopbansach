@@ -75,16 +75,25 @@ fun NotificationScreen(
                     NotificationItem(notification) {
                         viewModel.markAsRead(notification.id)
                         
-                        // Xử lý điều hướng dựa trên loại thông báo
+                        // Xử lý điều hướng thông minh dựa trên dữ liệu thông báo
                         when (notification.type) {
                             "ORDER" -> {
+                                // Nếu có orderId, có thể mở chi tiết (hiện tại chuyển về Lịch sử đơn hàng)
                                 navController.navigate(Screen.OrderHistory.route)
                             }
                             "CHAT" -> {
-                                navController.navigate(Screen.ChatList.route)
+                                if (notification.senderId.isNotEmpty()) {
+                                    // Chuyển trực tiếp vào phòng chat với người gửi
+                                    navController.navigate(Screen.Chat.createRoute(notification.senderId))
+                                } else {
+                                    navController.navigate(Screen.ChatList.route)
+                                }
                             }
                             else -> {
-                                // Mặc định không làm gì hoặc chuyển đến trang chủ
+                                // Các thông báo hệ thống khác có thể dẫn về trang chủ
+                                if (notification.title.contains("Shop", ignoreCase = true)) {
+                                    navController.navigate(Screen.MyShop.route)
+                                }
                             }
                         }
                     }
