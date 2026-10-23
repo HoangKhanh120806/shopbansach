@@ -36,7 +36,6 @@ fun LoginScreen(
     val context = LocalContext.current
     val authState by viewModel.authState.collectAsState()
 
-    // Xử lý logic đăng nhập thành công hoặc lỗi
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Success -> {
